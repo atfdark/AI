@@ -9,7 +9,7 @@ from pathlib import Path
 def main():
     """Enhanced launcher with multiple modes and options."""
     parser = argparse.ArgumentParser(
-        description="🤖 VOICE ASSISTANT - Multiple Launch Modes",
+        description="VOICE ASSISTANT - Multiple Launch Modes",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 EXAMPLES:

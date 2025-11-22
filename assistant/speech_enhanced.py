@@ -16,23 +16,28 @@ class EnhancedSpeechRecognizer:
     - Performance monitoring
     """
 
-    def __init__(self, callback: Optional[Callable] = None, config_path: str = None):
+    def __init__(self, callback: Optional[Callable] = None, config_path: str = None, wake_word_callback: Optional[Callable] = None):
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
         self.callback = callback
+        self.wake_word_callback = wake_word_callback
         self.config = self._load_config(config_path)
-        
+
+        # Wake word settings
+        self.wake_word_enabled = self.config.get('wake_word', {}).get('enabled', False)
+        self.wake_word = self.config.get('wake_word', {}).get('word', 'jarvis').lower()
+
         # Recognition engines
         self.google_available = True
         self.vosk_available = False
         self.vosk_model = None
         self.vosk_recognizer = None
-        
+
         # State management
         self.stop_listening = None
         self.current_engine = self.config.get('preferred_engine', 'auto')
         self.is_listening = False
-        
+
         # Performance tracking
         self.recognition_stats = {
             'google_attempts': 0,
@@ -43,10 +48,10 @@ class EnhancedSpeechRecognizer:
         }
 
     def _load_config(self, config_path: str = None) -> dict:
-        """Load speech recognition configuration."""
+        """Load configuration."""
         if not config_path:
             config_path = os.path.join(os.path.dirname(__file__), '..', 'config.json')
-        
+
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -58,10 +63,15 @@ class EnhancedSpeechRecognizer:
                     'noise_reduction': True,
                     'energy_threshold': 300,
                     'dynamic_energy_threshold': True
+                },
+                'wake_word': {
+                    'enabled': False,
+                    'word': 'jarvis',
+                    'timeout': 30
                 }
             }
-        
-        return config.get('speech_recognition', {})
+
+        return config
 
     def initialize_engines(self):
         """Initialize available speech recognition engines."""
@@ -119,23 +129,28 @@ class EnhancedSpeechRecognizer:
 
         self.initialize_engines()
         self._setup_recognizer()
-        
+
         if not self.google_available and not self.vosk_available:
             print("[ERROR] No speech recognition engines available!")
             return False
 
         print(f"[INFO] Starting speech recognition (engine: {self.current_engine})")
         self.is_listening = True
-        
-        # Start background listening
-        self.stop_listening = self.recognizer.listen_in_background(
-            self.microphone, 
-            self._audio_callback, 
-            phrase_time_limit=8,
-            energy_threshold=self.recognizer.energy_threshold
-        )
-        
-        return True
+
+        try:
+            # Start background listening
+            self.stop_listening = self.recognizer.listen_in_background(
+                self.microphone,
+                self._audio_callback,
+                phrase_time_limit=8
+            )
+            return True
+        except Exception as e:
+            print(f"[ERROR] Failed to start microphone listening: {e}")
+            print("[INFO] Try closing other apps using microphone (Zoom, Teams, etc.)")
+            print("[INFO] Or restart your computer")
+            self.is_listening = False
+            return False
 
     def _audio_callback(self, recognizer: sr.Recognizer, audio: sr.AudioData):
         """Handle incoming audio data with fallback recognition."""
@@ -143,9 +158,32 @@ class EnhancedSpeechRecognizer:
             text = self._recognize_speech(audio)
             if text and text.strip():
                 self.recognition_stats['total_recognitions'] += 1
-                print(f"[HEARD] {text}")
+                text_lower = text.strip().lower()
+
+                # Check for wake word first (always check, regardless of active state)
+                wake_word_detected = False
+                if self.wake_word_enabled and self.wake_word in text_lower:
+                    if self.wake_word_callback:
+                        self.wake_word_callback()
+                    wake_word_detected = True
+
+                # Process as command (remove wake word if present)
                 if self.callback:
-                    self.callback(text.strip())
+                    command_text = text.strip()
+                    if wake_word_detected:
+                        # Remove wake word from command
+                        command_text = text_lower.replace(self.wake_word, '').strip()
+                        # Keep original capitalization for better parsing
+                        if command_text:
+                            print(f"[SPEECH] Processing command after wake word: '{command_text}'")
+                        else:
+                            print(f"[SPEECH] Wake word detected, no additional command")
+                            return
+
+                    print(f"[SPEECH] Processing as command: '{command_text}'")
+                    self.callback(command_text)
+                else:
+                    print(f"[SPEECH] No callback configured")
         except Exception as e:
             print(f"[ERROR] Audio callback error: {e}")
 

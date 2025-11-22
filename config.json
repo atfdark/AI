@@ -4,5 +4,10 @@
     "VS Code": "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
     "Notepad": "notepad.exe",
     "Edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+  },
+  "wake_word": {
+    "enabled": true,
+    "word": "jarvis",
+    "timeout": 300
   }
 }

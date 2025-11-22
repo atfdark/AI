@@ -36,13 +36,17 @@ class VoiceAssistant:
             config_path=self.config_path
         )
         self.recognizer = EnhancedSpeechRecognizer(
-            callback=self.parser.handle_text,
+            callback=self._handle_command_text,
+            wake_word_callback=self._handle_wake_word,
             config_path=self.config_path
         )
         
         # Assistant state
         self.is_running = False
         self.is_listening = False
+        self.is_active = False  # Whether wake word has activated listening
+        self.activation_timeout = self.config.get('wake_word', {}).get('timeout', 30)
+        self.last_activation = None
         self.start_time = None
         self.session_stats = {
             'commands_executed': 0,
@@ -72,10 +76,30 @@ class VoiceAssistant:
         print(f"\n[INFO] Received signal {signum}, shutting down gracefully...")
         self.shutdown()
 
+    def _handle_wake_word(self):
+        """Handle wake word detection."""
+        self.is_active = True
+        self.last_activation = datetime.now()
+        print("Assistant activated! Listening for commands...")
+        responses = ["Yes?", "I'm listening", "What can I do for you?", "Ready"]
+        import random
+        self.tts.say(random.choice(responses))
+
+    def _handle_command_text(self, text: str):
+        """Handle command text, only if assistant is active."""
+        if not self.is_active:
+            return  # Ignore commands when not active
+
+        # Reset activation timer on each command to keep conversation going
+        self.last_activation = datetime.now()
+
+        # Process the command
+        self.parser.handle_text(text)
+
     def start(self):
         """Start the voice assistant."""
         print("=" * 60)
-        print("🤖 VOICE ASSISTANT - ENHANCED EDITION")
+        print("VOICE ASSISTANT - ENHANCED EDITION")
         print("=" * 60)
         
         # Initialize components
@@ -96,10 +120,12 @@ class VoiceAssistant:
         
         # Test TTS
         try:
-            self.tts.say("Voice assistant starting")
+            print("[INFO] Testing Text-to-Speech...")
+            self.tts.say("Voice assistant starting", sync=True)
             print("[OK] Text-to-Speech: Ready")
         except Exception as e:
             print(f"[WARNING] TTS initialization failed: {e}")
+            print("[INFO] TTS may not work - check audio settings")
         
         # Initialize speech recognition
         try:
@@ -120,7 +146,7 @@ class VoiceAssistant:
 
     def _show_startup_info(self):
         """Show startup information and capabilities."""
-        print("\n📋 ASSISTANT CAPABILITIES:")
+        print("\nASSISTANT CAPABILITIES:")
         print("  • Command Mode: Open apps, control system, take screenshots")
         print("  • Dictation Mode: Type everything you speak")
         print("  • Voice Commands: Natural language processing")
@@ -130,23 +156,33 @@ class VoiceAssistant:
         # Show current configuration
         sr_config = self.config.get('speech_recognition', {})
         preferred_engine = sr_config.get('preferred_engine', 'auto')
-        print(f"\n🎤 SPEECH RECOGNITION: {preferred_engine.title()}")
+        print(f"\nSPEECH RECOGNITION: {preferred_engine.title()}")
         
         apps = self.actions.get_known_apps()
         if apps:
-            print(f"\n📱 CONFIGURED APPLICATIONS:")
+            print(f"\nCONFIGURED APPLICATIONS:")
             for app in apps:
                 print(f"    • {app}")
         
-        print(f"\n🗣️  VOICE COMMANDS:")
+        # Show wake word status
+        wake_config = self.config.get('wake_word', {})
+        if wake_config.get('enabled', False):
+            wake_word = wake_config.get('word', 'jarvis')
+            timeout = wake_config.get('timeout', 30)
+            print(f"\nWAKE WORD: '{wake_word}' (timeout: {timeout}s)")
+            print("    Say the wake word to activate the assistant")
+        else:
+            print(f"\nCONTINUOUS LISTENING: Always active")
+
+        print(f"\nVOICE COMMANDS:")
         print("    • 'start dictation' - Begin dictation mode")
         print("    • 'stop dictation' - Return to command mode")
         print("    • 'open [app name]' - Launch applications")
         print("    • 'take a screenshot' - Capture screen")
         print("    • 'search for [query]' - Web search")
         print("    • 'increase volume' / 'decrease volume' - Audio control")
-        
-        print(f"\n⚡ Press Ctrl+C to stop the assistant")
+
+        print(f"\nPress Ctrl+C to stop the assistant")
 
     def _start_listening(self):
         """Start listening for voice commands."""
@@ -156,7 +192,7 @@ class VoiceAssistant:
                 self.is_listening = True
                 self.is_running = True
                 self.start_time = datetime.now()
-                print(f"\n🎧 LISTENING... Speak your commands!")
+                print(f"\nLISTENING... Speak your commands!")
                 print("=" * 60)
             else:
                 print("[ERROR] Failed to start listening")
@@ -174,17 +210,23 @@ class VoiceAssistant:
                     self.session_stats['session_duration'] = (
                         datetime.now() - self.start_time
                     ).total_seconds()
-                
+
+                # Check activation timeout
+                if self.is_active and self.last_activation:
+                    if (datetime.now() - self.last_activation).total_seconds() > self.activation_timeout:
+                        self.is_active = False
+                        print("Activation timeout - say wake word to reactivate")
+
                 # Performance monitoring
                 self.performance_monitor.check_system_resources()
-                
+
                 # Handle keyboard input for debugging
                 if self._check_debug_input():
                     self._handle_debug_command()
-                
+
                 # Brief pause to prevent busy waiting
                 time.sleep(0.5)
-                
+
         except KeyboardInterrupt:
             pass
         finally:
@@ -214,11 +256,12 @@ class VoiceAssistant:
         print(f"{'='*40}")
         print(f"Running: {self.is_running}")
         print(f"Listening: {self.is_listening}")
+        print(f"Active: {self.is_active}")
         print(f"Mode: {self.parser.mode}")
         print(f"Uptime: {self.session_stats['session_duration']:.1f} seconds")
         print(f"Commands: {self.session_stats['commands_executed']}")
         print(f"Success Rate: {self._get_success_rate():.1%}")
-        
+
         # Show component status
         print(f"\nComponents:")
         print(f"  TTS: {'✓' if self.tts.engine else '✗'}")
@@ -252,7 +295,7 @@ class VoiceAssistant:
     def shutdown(self):
         """Gracefully shutdown the assistant."""
         print(f"\n{'='*60}")
-        print("🛑 SHUTTING DOWN VOICE ASSISTANT")
+        print("SHUTTING DOWN VOICE ASSISTANT")
         print(f"{'='*60}")
         
         self.is_running = False
@@ -266,11 +309,11 @@ class VoiceAssistant:
         
         # Say goodbye
         try:
-            self.tts.say("Goodbye! Voice assistant stopped.")
+            self.tts.say("Goodbye! Voice assistant stopped.", sync=True)
         except:
             pass
         
-        print("👋 Assistant shutdown complete")
+        print("Assistant shutdown complete")
 
     def _show_final_stats(self):
         """Show final session statistics."""
@@ -280,7 +323,7 @@ class VoiceAssistant:
             stats = self.recognizer.get_stats()
             parser_stats = self.parser.get_stats()
             
-            print(f"\n📊 SESSION STATISTICS")
+            print(f"\nSESSION STATISTICS")
             print(f"Duration: {duration:.1f} seconds ({duration/60:.1f} minutes)")
             print(f"Voice recognitions: {stats['total_recognitions']}")
             print(f"Commands processed: {parser_stats['commands_processed']}")

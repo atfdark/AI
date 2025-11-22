@@ -263,24 +263,24 @@ class EnhancedCommandParser:
     def handle_text(self, text: str):
         """Main text processing handler."""
         self.stats['commands_processed'] += 1
-        
+
         # Parse the intent
         result = self.parse_intent(text)
-        
+
         # Execute the command
         success = self.execute_command(result)
-        
+
         # Update statistics
         if success:
             self.stats['successful_commands'] += 1
         else:
             self.stats['failed_commands'] += 1
-        
+
         # Update intent accuracy tracking
         intent_str = result.intent.value
         if intent_str not in self.stats['intent_accuracy']:
             self.stats['intent_accuracy'][intent_str] = {'correct': 0, 'total': 0}
-        
+
         self.stats['intent_accuracy'][intent_str]['total'] += 1
         if success:
             self.stats['intent_accuracy'][intent_str]['correct'] += 1
@@ -316,7 +316,14 @@ class EnhancedCommandParser:
                 return self._handle_web_browsing(result)
             
             else:
-                self.tts.say("Sorry, I didn't understand that command")
+                responses = [
+                    "Sorry, I didn't understand that command",
+                    "I didn't catch that",
+                    "Could you repeat that?",
+                    "I'm not sure what you mean"
+                ]
+                import random
+                self.tts.say(random.choice(responses))
                 return False
                 
         except Exception as e:
@@ -345,84 +352,109 @@ class EnhancedCommandParser:
     def _handle_open_application(self, result: CommandResult) -> bool:
         """Handle application opening commands."""
         app_name = result.parameters.get('application', '')
-        
+
         # Find best match for application name
         known_apps = self.actions.get_known_apps()
         best_match = None
-        
+
         for app in known_apps:
             if app_name.lower() in app.lower() or app.lower() in app_name.lower():
                 best_match = app
                 break
-        
+
         if best_match:
             success = self.actions.launch_app(best_match)
             if success:
-                self.tts.say(f"Opening {best_match}")
+                responses = [
+                    f"Opening {best_match}",
+                    f"Launching {best_match} for you",
+                    f"Sure, opening {best_match}",
+                    f"{best_match} is now open"
+                ]
+                import random
+                self.tts.say(random.choice(responses))
                 return True
             else:
-                self.tts.say(f"Failed to open {best_match}")
+                self.tts.say(f"Sorry, I couldn't open {best_match}")
                 return False
         else:
-            self.tts.say(f"Application not found: {app_name}")
+            self.tts.say(f"I don't know how to open {app_name}")
             return False
 
     def _handle_close_window(self, result: CommandResult) -> bool:
         """Handle window closing commands."""
         self.actions.close_window()
-        self.tts.say("Window closed")
+        responses = ["Window closed", "Done", "Closed"]
+        import random
+        self.tts.say(random.choice(responses))
         return True
 
     def _handle_volume_control(self, result: CommandResult) -> bool:
         """Handle volume control commands."""
         text = result.parameters.get('text', '').lower()
-        
+
         if 'up' in text or 'higher' in text or 'increase' in text:
             self.actions.volume_up(steps=2)
-            self.tts.say("Volume increased")
+            responses = ["Volume increased", "Louder", "Turning it up"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         elif 'down' in text or 'lower' in text or 'decrease' in text:
             self.actions.volume_down(steps=2)
-            self.tts.say("Volume decreased")
+            responses = ["Volume decreased", "Quieter", "Turning it down"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         elif 'mute' in text:
             self.actions.volume_down(steps=10)  # Effectively mute
-            self.tts.say("Volume muted")
+            responses = ["Volume muted", "Muted", "Shh"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
-        
+
         return False
 
     def _handle_screenshot(self, result: CommandResult) -> bool:
         """Handle screenshot commands."""
         filename = self.actions.take_screenshot()
         if filename:
-            self.tts.say("Screenshot taken")
+            responses = ["Screenshot taken", "Captured", "Got it", "Screen captured"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         else:
-            self.tts.say("Screenshot failed")
+            self.tts.say("Sorry, couldn't take screenshot")
             return False
 
     def _handle_text_operation(self, result: CommandResult) -> bool:
         """Handle text operation commands."""
         text = result.parameters.get('text', '').lower()
-        
+
         if 'copy' in text and 'paste' not in text:
             self.actions.copy()
-            self.tts.say("Copied")
+            responses = ["Copied", "Copied to clipboard", "Done"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         elif 'paste' in text:
             self.actions.paste()
-            self.tts.say("Pasted")
+            responses = ["Pasted", "Pasted from clipboard", "Done"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         elif 'save' in text:
             self.actions.save()
-            self.tts.say("Saved")
+            responses = ["Saved", "File saved", "Done"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         elif 'select all' in text:
             self.actions.select_all()
-            self.tts.say("Selected all")
+            responses = ["Selected all", "Everything selected", "Done"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
-        
+
         return False
 
     def _handle_search(self, result: CommandResult) -> bool:
@@ -432,7 +464,9 @@ class EnhancedCommandParser:
             import webbrowser
             url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
             webbrowser.open(url)
-            self.tts.say(f"Searching for {query}")
+            responses = [f"Searching for {query}", f"Let me search for {query}", f"Looking up {query}"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         return False
 
@@ -443,10 +477,12 @@ class EnhancedCommandParser:
             # Add protocol if missing
             if not url.startswith(('http://', 'https://')):
                 url = 'https://' + url
-            
+
             import webbrowser
             webbrowser.open(url)
-            self.tts.say(f"Opening {url}")
+            responses = [f"Opening {url}", f"Going to {url}", f"Navigating to {url}"]
+            import random
+            self.tts.say(random.choice(responses))
             return True
         return False
 
