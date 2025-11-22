@@ -1,0 +1,9 @@
+SpeechRecognition
+pyttsx3
+pyautogui
+keyboard
+pyaudio
+vosk
+numpy
+# Optional / advanced
+# openai-whisper
