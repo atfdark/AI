@@ -9,6 +9,14 @@ newsapi-python
 gtts
 pyperclip
 requests
+beautifulsoup4
 wikipedia
+pyjokes
+yt-dlp
+geocoder
+psutil
+pypiwin32
+comtypes
+pyttsx3
 # Optional / advanced
 # openai-whisper
