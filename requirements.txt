@@ -1,9 +1,12 @@
 SpeechRecognition
-pyttsx3
+pygame
 pyautogui
 keyboard
 pyaudio
 vosk
 numpy
+newsapi-python
+elevenlabs
+pyttsx3
 # Optional / advanced
 # openai-whisper

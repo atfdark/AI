@@ -81,7 +81,15 @@ class VoiceAssistant:
         self.is_active = True
         self.last_activation = datetime.now()
         print("Assistant activated! Listening for commands...")
-        responses = ["Yes?", "I'm listening", "What can I do for you?", "Ready"]
+        # JARVIS-like responses
+        responses = [
+            "At your service, sir",
+            "How may I assist you?",
+            "Yes, sir?",
+            "I'm listening",
+            "What can I do for you?",
+            "Ready and waiting"
+        ]
         import random
         self.tts.say(random.choice(responses))
 
@@ -121,7 +129,7 @@ class VoiceAssistant:
         # Test TTS
         try:
             print("[INFO] Testing Text-to-Speech...")
-            self.tts.say("Voice assistant starting", sync=True)
+            self.tts.say("JARVIS systems initializing", sync=True)
             print("[OK] Text-to-Speech: Ready")
         except Exception as e:
             print(f"[WARNING] TTS initialization failed: {e}")
@@ -309,7 +317,7 @@ class VoiceAssistant:
         
         # Say goodbye
         try:
-            self.tts.say("Goodbye! Voice assistant stopped.", sync=True)
+            self.tts.say("JARVIS systems offline. Goodbye.", sync=True)
         except:
             pass
         

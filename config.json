@@ -9,5 +9,11 @@
     "enabled": true,
     "word": "jarvis",
     "timeout": 300
+  },
+  "newsapi": {
+    "api_key": "YOUR_NEWSAPI_KEY_HERE"
+  },
+  "elevenlabs": {
+    "api_key": "sk_1bf3ecb29a51fd9b5eaf662f707ffa548937dd8337e6a180"
   }
 }
