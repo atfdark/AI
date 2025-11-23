@@ -92,6 +92,8 @@ class VoiceAssistant:
         ]
         import random
         self.tts.say(random.choice(responses))
+        # Add delay to prevent microphone from capturing TTS output
+        time.sleep(1)
 
     def _handle_command_text(self, text: str):
         """Handle command text, only if assistant is active."""

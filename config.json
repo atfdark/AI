@@ -3,12 +3,28 @@
     "Chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "VS Code": "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
     "Notepad": "notepad.exe",
-    "Edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+    "Edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "Spotify": "C:\\Users\\%USERNAME%\\AppData\\Local\\Microsoft\\WindowsApps\\Spotify.exe"
   },
   "wake_word": {
     "enabled": true,
     "word": "jarvis",
     "timeout": 300
+  },
+  "language": {
+    "default": "en",
+    "supported": ["en", "hi"],
+    "vosk_models": {
+      "en": "path/to/english/model",
+      "hi": "path/to/hindi/model"
+    }
+  },
+  "speech_recognition": {
+    "preferred_engine": "auto",
+    "vosk_model_path": null,
+    "noise_reduction": true,
+    "energy_threshold": 300,
+    "dynamic_energy_threshold": true
   },
   "newsapi": {
     "api_key": "YOUR_NEWSAPI_KEY_HERE"

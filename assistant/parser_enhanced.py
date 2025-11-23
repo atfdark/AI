@@ -44,24 +44,29 @@ class EnhancedCommandParser:
         self.actions = actions
         self.tts = tts
         self.mode = 'command'  # 'command' or 'dictation'
-        
+
         # Load configuration
         self.config_path = config_path or os.path.join(
             os.path.dirname(__file__), '..', 'config.json'
         )
         self.config = self._load_config()
-        
+
+        # Language settings
+        self.language_config = self.config.get('language', {})
+        self.current_language = self.language_config.get('default', 'en')
+        self.supported_languages = self.language_config.get('supported', ['en'])
+
         # Safety settings
         self.safety = self.config.get('safety', {})
-        
+
         # Command patterns for intent recognition
         self.command_patterns = self._initialize_patterns()
         # Reorder patterns to check more specific ones first
         self._reorder_patterns()
-        
+
         # Learning data for personalization
         self.learning_data = self._load_learning_data()
-        
+
         # Statistics
         self.stats = {
             'commands_processed': 0,
@@ -94,80 +99,194 @@ class EnhancedCommandParser:
 
     def _initialize_patterns(self) -> Dict[Intent, List[Tuple[str, float]]]:
         """Initialize command patterns for intent recognition."""
-        return {
+        patterns = {}
+
+        # English patterns
+        patterns.update({
             Intent.OPEN_APPLICATION: [
                 (r'\b(open|launch|start|run)\s+(.+?)\s*(?:please|now)?$', 0.9),
                 (r'\b(want|need)\s+(?:to\s+)?(open|launch|start|run)\s+(.+?)$', 0.8),
                 (r'\b(please\s+)?(open|launch|start|run)\s+(.+?)$', 0.85),
             ],
-            
+        })
+
+        # Hindi patterns
+        if 'hi' in self.supported_languages:
+            patterns[Intent.OPEN_APPLICATION].extend([
+                (r'\b(खोलो|शुरू\s+करो|चलाओ)\s+(.+?)\s*(?:कृपया|अभी)?$', 0.9),
+                (r'\b(मैं\s+चाहता\s+हूं|मुझे\s+चाहिए)\s+(?:कि\s+)?(खोलो|शुरू\s+करो|चलाओ)\s+(.+?)$', 0.8),
+                (r'\b(कृपया\s+)?(खोलो|शुरू\s+करो|चलाओ)\s+(.+?)$', 0.85),
+            ])
+
+        # Continue with other intents...
+        patterns.update({
             Intent.CLOSE_WINDOW: [
                 (r'\b(close|shutdown|exit)\s+(?:this\s+)?(?:window|application|app)?$', 0.9),
                 (r'\b(shut\s+down|exit\s+out\s+of)\s+(?:this\s+)?(?:window|app)?$', 0.8),
                 (r'\b(quit|kill)\s+(?:this\s+)?(?:app|application)?$', 0.85),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.CLOSE_WINDOW].extend([
+                (r'\b(बंद\s+करो|बंद)\s+(?:यह\s+)?(?:विंडो|एप्लिकेशन|ऐप)?$', 0.9),
+                (r'\b(बंद\s+कर\s+दो|निकाल\s+दो)\s+(?:यह\s+)?(?:विंडो|ऐप)?$', 0.8),
+                (r'\b(छोड़ो|मरो)\s+(?:यह\s+)?(?:ऐप|एप्लिकेशन)?$', 0.85),
+            ])
+
+        patterns.update({
             Intent.SYSTEM_CONTROL: [
                 (r'\b(minimize|hide|maximize|show)\s+(?:this\s+)?(?:window|application)?$', 0.8),
                 (r'\b(switch\s+to|switch\s+focus\s+to|go\s+to)\s+(.+?)$', 0.75),
                 (r'\b(next\s+window|previous\s+window|alt\s+tab)$', 0.9),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.SYSTEM_CONTROL].extend([
+                (r'\b(छोटा\s+करो|छिपाओ|बड़ा\s+करो|दिखाओ)\s+(?:यह\s+)?(?:विंडो|एप्लिकेशन)?$', 0.8),
+                (r'\b(स्विच\s+करो|फोकस\s+करो|जाओ)\s+(.+?)$', 0.75),
+                (r'\b(अगली\s+विंडो|पिछली\s+विंडो|ऑल्ट\s+टैब)$', 0.9),
+            ])
+
+        patterns.update({
             Intent.VOLUME_CONTROL: [
                 (r'\b(volume|turn|increase|decrease)\s+(?:the\s+)?(?:volume|sound)\s*(?:up|down|higher|lower)?$', 0.9),
                 (r'\b(make\s+it|turn\s+it)\s+(?:louder|quieter|higher|lower)$', 0.7),
                 (r'\b(mute|unmute|silence)\s*(?:the\s+)?(?:volume|sound|computer)?$', 0.85),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.VOLUME_CONTROL].extend([
+                (r'\b(वॉल्यूम|घुमाओ|बढ़ाओ|घटाओ)\s+(?:द\s+)?(?:वॉल्यूम|आवाज)\s*(?:ऊपर|नीचे|ज़्यादा|कम)?$', 0.9),
+                (r'\b(बनाओ|करो)\s+(?:इसे\s+)?(?:ज़्यादा|कम|ऊँचा|नीचा)$', 0.7),
+                (r'\b(म्यूट|अनम्यूट|चुप)\s*(?:करो\s+)?(?:वॉल्यूम|आवाज|कंप्यूटर)?$', 0.85),
+            ])
+
+        patterns.update({
             Intent.SCREENSHOT: [
                 (r'\b(take\s+)?(a\s+)?screenshot\s*(?:please|now)?$', 0.9),
                 (r'\b(capture\s+screen|screen\s+capture|screen\s+shot)$', 0.85),
                 (r'\b(save\s+screen|save\s+this\s+screen)$', 0.7),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.SCREENSHOT].extend([
+                (r'\b(लो\s+)?(एक\s+)?स्क्रीनशॉट\s*(?:कृपया|अभी)?$', 0.9),
+                (r'\b(कैप्चर\s+स्क्रीन|स्क्रीन\s+कैप्चर|स्क्रीन\s+शॉट)$', 0.85),
+                (r'\b(सेव\s+स्क्रीन|सेव\s+करो\s+यह\s+स्क्रीन)$', 0.7),
+            ])
+
+        patterns.update({
             Intent.TEXT_OPERATION: [
                 (r'\b(copy|paste|cut|select\s+all)\s*(?:this|that|everything|all)?$', 0.9),
                 (r'\b(undo|redo)\s*(?:that|last\s+action)?$', 0.8),
                 (r'\b(save|save\s+as|print)\s*(?:this|that|document|file)?$', 0.85),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.TEXT_OPERATION].extend([
+                (r'\b(कॉपी|पेस्ट|कट|सब\s+सेलेक्ट)\s*(?:यह|वह|सब|सब कुछ)?$', 0.9),
+                (r'\b(अन्डू|रीडू)\s*(?:वह|आखिरी\s+एक्शन)?$', 0.8),
+                (r'\b(सेव|सेव\s+ऐज़|प्रिंट)\s*(?:यह|वह|डॉक्यूमेंट|फाइल)?$', 0.85),
+            ])
+
+        patterns.update({
             Intent.SEARCH: [
                 (r'\b(search\s+for|find|look\s+for)\s+(.+?)$', 0.9),
                 (r'\b(what\s+is|who\s+is|when\s+is|where\s+is|why\s+is|how\s+to)\s+(.+?)$', 0.8),
                 (r'\b(google\s+|bing\s+|yahoo\s+)\s*(.+?)$', 0.85),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.SEARCH].extend([
+                (r'\b(खोजो|ढूंढो|देखो)\s+(.+?)$', 0.9),
+                (r'\b(क्या\s+है|कौन\s+है|कब\s+है|कहाँ\s+है|क्यों\s+है|कैसे\s+करें)\s+(.+?)$', 0.8),
+                (r'\b(गूगल\s+|बिंग\s+|याहू\s+)\s*(.+?)$', 0.85),
+            ])
+
+        patterns.update({
             Intent.WEB_BROWSING: [
                 (r'\b(go\s+to|open|visit|navigate\s+to)\s+(?:website\s+)?(.+?)$', 0.8),
                 (r'\b(browse\s+to|surf\s+to)\s+(.+?)$', 0.75),
                 (r'\b(check\s+out|look\s+at)\s+(.+?)$', 0.6),
             ],
-            
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.WEB_BROWSING].extend([
+                (r'\b(जाओ|खोलो|विजिट\s+करो|नेविगेट\s+करो)\s+(?:वेबसाइट\s+)?(.+?)$', 0.8),
+                (r'\b(ब्राउज़\s+करो|सर्फ\s+करो)\s+(.+?)$', 0.75),
+                (r'\b(चेक\s+करो|देखो)\s+(.+?)$', 0.6),
+            ])
+
+        patterns.update({
             Intent.SWITCH_MODE: [
                 (r'\b(start|begin|enter)\s+(?:dictation|dictation\s+mode)$', 1.0),
                 (r'\b(stop|end|exit)\s+(?:dictation|dictation\s+mode)$', 1.0),
                 (r'\b(switch\s+to|change\s+to)\s+(command|dictation)\s+mode$', 0.9),
             ],
+        })
 
+        if 'hi' in self.supported_languages:
+            patterns[Intent.SWITCH_MODE].extend([
+                (r'\b(शुरू|बEGIN|एंटर)\s+(?:डिक्टेशन|डिक्टेशन\s+मोड)$', 1.0),
+                (r'\b(रोको|एंड|एग्जिट)\s+(?:डिक्टेशन|डिक्टेशन\s+मोड)$', 1.0),
+                (r'\b(स्विच\s+करो|चेंज\s+करो)\s+(कमांड|डिक्टेशन)\s+मोड$', 0.9),
+            ])
+
+        patterns.update({
             Intent.NEWS_REPORTING: [
                 (r'\b(what\'s\s+the\s+news|tell\s+me\s+the\s+news|get\s+news|news\s+update|latest\s+news)\s*(?:please|now)?$', 0.9),
                 (r'\b(give\s+me\s+news|fetch\s+news|news\s+report)\s*(?:please|now)?$', 0.85),
                 (r'\b(what\'s\s+happening|what\'s\s+going\s+on|current\s+events)\s*(?:in\s+the\s+world)?$', 0.7),
             ],
+        })
 
+        if 'hi' in self.supported_languages:
+            patterns[Intent.NEWS_REPORTING].extend([
+                (r'\b(क्या\s+खबर\s+है|मुझे\s+खबर\s+बताओ|खबर\s+लाओ|खबर\s+अपडेट|ताज़ा\s+खबर)\s*(?:कृपया|अभी)?$', 0.9),
+                (r'\b(मुझे\s+खबर\s+दो|खबर\s+फेच\s+करो|खबर\s+रिपोर्ट)\s*(?:कृपया|अभी)?$', 0.85),
+                (r'\b(क्या\s+हो\s+रहा\s+है|क्या\s+चल\s+रहा\s+है|मौजूदा\s+घटनाएं)\s*(?:दुनिया\s+में)?$', 0.7),
+            ])
+
+        patterns.update({
             Intent.TODO_GENERATION: [
                 (r'\b(create|make|generate)\s+(?:a\s+)?(?:todo|to-do|task)\s+list\s+(?:for\s+)?(.+?)$', 0.9),
                 (r'\b(start\s+)?(?:a\s+)?(?:todo|to-do|task)\s+list\s+(?:called|named)\s+(.+?)$', 0.8),
             ],
+        })
 
+        if 'hi' in self.supported_languages:
+            patterns[Intent.TODO_GENERATION].extend([
+                (r'\b(बनाओ|करो|जनरेट\s+करो)\s+(?:एक\s+)?(?:टूडू|टू-डू|टास्क)\s+लिस्ट\s+(?:के\s+लिए\s+)?(.+?)$', 0.9),
+                (r'\b(शुरू\s+)?(?:एक\s+)?(?:टूडू|टू-डू|टास्क)\s+लिस्ट\s+(?:कॉल्ड|नेम्ड)\s+(.+?)$', 0.8),
+            ])
+
+        patterns.update({
             Intent.TODO_MANAGEMENT: [
                 (r'\b(show|list|display|get)\s+(?:my\s+)?(?:todo|to-do|task)\s+lists?$', 0.9),
                 (r'\b(add\s+task|add\s+to\s+todo|add\s+to\s+list)\s+(.+?)$', 0.85),
                 (r'\b(remove|delete)\s+(?:task\s+)?(.+?)\s+from\s+(?:todo|to-do|list)$', 0.8),
                 (r'\b(mark\s+(.+?)\s+as\s+(?:done|completed)|complete\s+(.+?))\s*$', 0.85),
                 (r'\b(what\s+are\s+my\s+tasks|what\s+do\s+i\s+have\s+to\s+do)\s*(?:today|now)?$', 0.8),
-            ]
-        }
+            ],
+        })
+
+        if 'hi' in self.supported_languages:
+            patterns[Intent.TODO_MANAGEMENT].extend([
+                (r'\b(दिखाओ|लिस्ट|डिस्प्ले|गेट)\s+(?:मेरी\s+)?(?:टूडू|टू-डू|टास्क)\s+लिस्ट.?$', 0.9),
+                (r'\b(ऐड\s+टास्क|ऐड\s+टू\s+टूडू|ऐड\s+टू\s+लिस्ट)\s+(.+?)$', 0.85),
+                (r'\b(रिमूव|डिलीट)\s+(?:टास्क\s+)?(.+?)\s+फ्रॉम\s+(?:टूडू|टू-डू|लिस्ट)$', 0.8),
+                (r'\b(मार्क\s+(.+?)\s+ऐज़\s+(?:डन|कंप्लीटेड)|कंप्लीट\s+(.+?))\s*$', 0.85),
+                (r'\b(क्या\s+हैं\s+मेरे\s+टास्क|मुझे\s+क्या\s+करना\s+है)\s*(?:आज|अभी)?$', 0.8),
+            ])
+
+        return patterns
 
     def _reorder_patterns(self):
         """Reorder patterns to check more specific ones first."""
@@ -455,11 +574,13 @@ class EnhancedCommandParser:
                 ]
                 import random
                 self.tts.say(random.choice(responses))
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
-                
+
         except Exception as e:
             print(f"[ERROR] Command execution failed: {e}")
             self.tts.say("Sorry, there was an error executing that command")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return False
 
     def _handle_mode_switch(self, result: CommandResult) -> bool:
@@ -467,16 +588,20 @@ class EnhancedCommandParser:
         if result.action == "start_dictation":
             self.mode = 'dictation'
             self.tts.say("Dictation started")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         elif result.action == "stop_dictation":
             self.mode = 'command'
             self.tts.say("Dictation stopped")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         return False
 
     def _handle_dictation(self, result: CommandResult) -> bool:
         """Handle dictation mode."""
         text = result.parameters.get('text', '')
+        print(f"[DICTATION] Typing text: '{text}' (len: {len(text)}, repr: {repr(text)})")
+        print(f"[DICTATION] Hex: {[hex(ord(c)) for c in text]}")
         self.actions.type_text(text)
         return True
 
@@ -504,12 +629,15 @@ class EnhancedCommandParser:
                 ]
                 import random
                 self.tts.say(random.choice(responses))
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
             else:
                 self.tts.say(f"Sorry, I couldn't open {best_match}")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
         else:
             self.tts.say(f"I don't know how to open {app_name}")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return False
 
     def _handle_close_window(self, result: CommandResult) -> bool:
@@ -518,6 +646,7 @@ class EnhancedCommandParser:
         responses = ["Window closed", "Done", "Closed"]
         import random
         self.tts.say(random.choice(responses))
+        time.sleep(1)  # Prevent microphone from capturing TTS output
         return True
 
     def _handle_volume_control(self, result: CommandResult) -> bool:
@@ -529,18 +658,21 @@ class EnhancedCommandParser:
             responses = ["Volume increased", "Louder", "Turning it up"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         elif 'down' in text or 'lower' in text or 'decrease' in text:
             self.actions.volume_down(steps=2)
             responses = ["Volume decreased", "Quieter", "Turning it down"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         elif 'mute' in text:
             self.actions.volume_down(steps=10)  # Effectively mute
             responses = ["Volume muted", "Muted", "Shh"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
 
         return False
@@ -552,9 +684,11 @@ class EnhancedCommandParser:
             responses = ["Screenshot taken", "Captured", "Got it", "Screen captured"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         else:
             self.tts.say("Sorry, couldn't take screenshot")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return False
 
     def _handle_text_operation(self, result: CommandResult) -> bool:
@@ -566,24 +700,28 @@ class EnhancedCommandParser:
             responses = ["Copied", "Copied to clipboard", "Done"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         elif 'paste' in text:
             self.actions.paste()
             responses = ["Pasted", "Pasted from clipboard", "Done"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         elif 'save' in text:
             self.actions.save()
             responses = ["Saved", "File saved", "Done"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         elif 'select all' in text:
             self.actions.select_all()
             responses = ["Selected all", "Everything selected", "Done"]
             import random
             self.tts.say(random.choice(responses))
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
 
         return False
@@ -592,16 +730,26 @@ class EnhancedCommandParser:
         """Handle search commands."""
         query = result.parameters.get('query', '')
         if query:
-            url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-            success = self.actions.open_url(url)
-            if success:
-                responses = [f"Searching for {query}", f"Let me search for {query}", f"Looking up {query}"]
-                import random
-                self.tts.say(random.choice(responses))
+            summary = self.actions.perform_search(query)
+            if summary:
+                # Provide the summary
+                self.tts.say(f"Here's what I found about {query}: {summary}")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
             else:
-                self.tts.say(f"Sorry, couldn't search for {query}")
-                return False
+                # Fallback to opening browser if no summary available
+                url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+                success = self.actions.open_url(url)
+                if success:
+                    responses = [f"Searching for {query}", f"Let me search for {query}", f"Looking up {query}"]
+                    import random
+                    self.tts.say(random.choice(responses))
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
+                    return True
+                else:
+                    self.tts.say(f"Sorry, couldn't search for {query}")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
+                    return False
         return False
 
     def _handle_web_browsing(self, result: CommandResult) -> bool:
@@ -613,9 +761,11 @@ class EnhancedCommandParser:
                 responses = [f"Opening {url}", f"Going to {url}", f"Navigating to {url}"]
                 import random
                 self.tts.say(random.choice(responses))
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
             else:
                 self.tts.say(f"Sorry, couldn't open {url}")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
         return False
 
@@ -627,13 +777,16 @@ class EnhancedCommandParser:
                 # Summarize and speak the news
                 summary = f"Here are the latest news headlines: {news_data}"
                 self.tts.say(summary)
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
             else:
                 self.tts.say("Sorry, I couldn't fetch the news right now")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
         except Exception as e:
             print(f"[ERROR] News reporting failed: {e}")
             self.tts.say("Sorry, there was an error getting the news")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return False
 
     def _handle_todo_generation(self, result: CommandResult) -> bool:
@@ -645,11 +798,14 @@ class EnhancedCommandParser:
         if success:
             if tasks:
                 self.tts.say(f"Created todo list '{list_name}' with {len(tasks)} tasks")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
             else:
                 self.tts.say(f"Created empty todo list '{list_name}'")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
             return True
         else:
             self.tts.say("Sorry, couldn't create the todo list")
+            time.sleep(1)  # Prevent microphone from capturing TTS output
             return False
 
     def _handle_todo_management(self, result: CommandResult) -> bool:
@@ -661,9 +817,11 @@ class EnhancedCommandParser:
             if lists:
                 list_names = list(lists.keys())
                 self.tts.say(f"You have {len(list_names)} todo lists: {', '.join(list_names)}")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
             else:
                 self.tts.say("You don't have any todo lists yet")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
 
         elif action == 'add':
@@ -672,12 +830,15 @@ class EnhancedCommandParser:
                 success = self.actions.add_todo_task('default', task)  # Default list
                 if success:
                     self.tts.say(f"Added task: {task}")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
                     return True
                 else:
                     self.tts.say("Sorry, couldn't add the task")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
                     return False
             else:
                 self.tts.say("No task specified")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
 
         elif action == 'remove':
@@ -686,12 +847,15 @@ class EnhancedCommandParser:
                 success = self.actions.remove_todo_task('default', task)
                 if success:
                     self.tts.say(f"Removed task: {task}")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
                     return True
                 else:
                     self.tts.say("Sorry, couldn't remove the task")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
                     return False
             else:
                 self.tts.say("No task specified")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
 
         elif action == 'complete':
@@ -700,12 +864,15 @@ class EnhancedCommandParser:
                 success = self.actions.complete_todo_task('default', task)
                 if success:
                     self.tts.say(f"Marked as completed: {task}")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
                     return True
                 else:
                     self.tts.say("Sorry, couldn't mark the task as completed")
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
                     return False
             else:
                 self.tts.say("No task specified")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
 
         return False

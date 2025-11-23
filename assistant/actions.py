@@ -4,7 +4,18 @@ import json
 import time
 import pyautogui
 import webbrowser
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
+try:
+    import requests
+except ImportError:
+    requests = None
+
+try:
+    import pyperclip
+    CLIPBOARD_AVAILABLE = True
+except ImportError:
+    CLIPBOARD_AVAILABLE = False
+
 try:
     from newsapi import NewsApiClient
 except ImportError:
@@ -43,10 +54,33 @@ class Actions:
     def type_text(self, text):
         # Slight pause to ensure focus
         time.sleep(0.05)
+        print(f"[TYPE_TEXT] Received text: '{text}' (len: {len(text)}, repr: {repr(text)})")
+        print(f"[TYPE_TEXT] Hex: {[hex(ord(c)) for c in text]}")
+
+        # Try clipboard paste first (more reliable for Unicode)
+        if CLIPBOARD_AVAILABLE and text:
+            try:
+                # Save current clipboard content
+                current_clipboard = pyperclip.paste() if pyperclip.paste() else ""
+                # Copy text to clipboard
+                pyperclip.copy(text)
+                # Paste
+                self.hotkey('ctrl', 'v')
+                print(f"[TYPE_TEXT] Successfully pasted text using clipboard")
+                # Restore clipboard if it had content
+                if current_clipboard:
+                    time.sleep(0.1)  # Small delay
+                    pyperclip.copy(current_clipboard)
+                return
+            except Exception as e:
+                print(f"[TYPE_TEXT] Clipboard paste failed: {e}, falling back to typing")
+
+        # Fallback to typing
         try:
             pyautogui.write(text, interval=0.01)
+            print(f"[TYPE_TEXT] Successfully wrote text using pyautogui.write")
         except Exception as e:
-            print(f"Typing error: {e}")
+            print(f"[TYPE_TEXT] Typing error: {e}")
 
     def hotkey(self, *keys):
         try:
@@ -165,6 +199,42 @@ class Actions:
 
         except Exception as e:
             print(f"[ERROR] Failed to fetch news: {e}")
+            return None
+
+    def perform_search(self, query: str) -> str:
+        """Perform a search using DuckDuckGo API and return a short summary."""
+        if requests is None:
+            print("[ERROR] Requests library not installed")
+            return None
+
+        try:
+            # Use DuckDuckGo instant answers API
+            url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+
+            # Try to get instant answer or abstract
+            if data.get('Answer'):
+                return data['Answer']
+            elif data.get('AbstractText'):
+                return data['AbstractText']
+            elif data.get('Definition'):
+                return data['Definition']
+            elif data.get('RelatedTopics'):
+                # Get first related topic summary
+                topics = data['RelatedTopics']
+                if topics and isinstance(topics[0], dict) and 'Text' in topics[0]:
+                    return topics[0]['Text']
+            else:
+                return f"I found information about {query}, but couldn't get a concise summary. You might want to search manually."
+
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Search request failed: {e}")
+            return None
+        except Exception as e:
+            print(f"[ERROR] Failed to perform search: {e}")
             return None
 
     def create_todo_list(self, list_name: str, tasks: list = None) -> bool:

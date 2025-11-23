@@ -23,6 +23,11 @@ class EnhancedSpeechRecognizer:
         self.wake_word_callback = wake_word_callback
         self.config = self._load_config(config_path)
 
+        # Language settings
+        self.language_config = self.config.get('language', {})
+        self.current_language = self.language_config.get('default', 'en')
+        self.supported_languages = self.language_config.get('supported', ['en'])
+
         # Wake word settings
         self.wake_word_enabled = self.config.get('wake_word', {}).get('enabled', False)
         self.wake_word = self.config.get('wake_word', {}).get('word', 'jarvis').lower()
@@ -30,8 +35,8 @@ class EnhancedSpeechRecognizer:
         # Recognition engines
         self.google_available = True
         self.vosk_available = False
-        self.vosk_model = None
-        self.vosk_recognizer = None
+        self.vosk_models = {}  # Dictionary to hold models for different languages
+        self.vosk_recognizers = {}  # Dictionary to hold recognizers for different languages
 
         # State management
         self.stop_listening = None
@@ -85,22 +90,36 @@ class EnhancedSpeechRecognizer:
             self.google_available = False
             print(f"[WARNING] Google Speech Recognition: Failed - {e}")
 
-        # Initialize Vosk if configured
-        vosk_config = self.config.get('vosk_model_path')
-        if vosk_config and os.path.exists(vosk_config):
+        # Initialize Vosk models for all supported languages
+        vosk_models_config = self.language_config.get('vosk_models', {})
+        if vosk_models_config:
             try:
                 from vosk import Model, KaldiRecognizer
                 import wave
-                
-                self.vosk_model = Model(vosk_config)
-                self.vosk_available = True
-                print(f"[INFO] Vosk Offline Recognition: Available (model: {vosk_config})")
+
+                for lang, model_path in vosk_models_config.items():
+                    if model_path and os.path.exists(model_path):
+                        try:
+                            self.vosk_models[lang] = Model(model_path)
+                            self.vosk_recognizers[lang] = None  # Will be initialized when needed
+                            print(f"[INFO] Vosk model loaded for {lang}: {model_path}")
+                        except Exception as e:
+                            print(f"[WARNING] Failed to load Vosk model for {lang}: {e}")
+                    else:
+                        print(f"[INFO] Vosk model path not configured for {lang}")
+
+                if self.vosk_models:
+                    self.vosk_available = True
+                    print(f"[INFO] Vosk Offline Recognition: Available for languages: {list(self.vosk_models.keys())}")
+                else:
+                    print("[INFO] No Vosk models loaded")
+
             except ImportError:
                 print("[WARNING] Vosk: Not installed. Install with: pip install vosk")
             except Exception as e:
                 print(f"[WARNING] Vosk initialization failed: {e}")
         else:
-            print("[INFO] Vosk Offline Recognition: Not configured")
+            print("[INFO] Vosk models not configured")
 
     def _setup_recognizer(self):
         """Configure the recognizer with current settings."""
@@ -137,13 +156,39 @@ class EnhancedSpeechRecognizer:
         print(f"[INFO] Starting speech recognition (engine: {self.current_engine})")
         self.is_listening = True
 
+        # Diagnostic logging for microphone access
+        print("[DEBUG] Checking microphone availability...")
+        try:
+            # List available microphones
+            mics = sr.Microphone.list_microphone_names()
+            print(f"[DEBUG] Available microphones: {len(mics)}")
+            for i, mic in enumerate(mics):
+                print(f"[DEBUG]  {i}: {mic}")
+
+            # Test microphone access
+            print("[DEBUG] Testing microphone access...")
+            with self.microphone as source:
+                print("[DEBUG] Microphone opened successfully")
+                # Try a quick listen test
+                try:
+                    audio = self.recognizer.listen(source, timeout=1, phrase_time_limit=1)
+                    print("[DEBUG] Microphone listen test successful")
+                except sr.WaitTimeoutError:
+                    print("[DEBUG] Microphone listen test timed out (expected)")
+                except Exception as e:
+                    print(f"[DEBUG] Microphone listen test failed: {e}")
+        except Exception as e:
+            print(f"[DEBUG] Microphone diagnostic failed: {e}")
+
         try:
             # Start background listening
+            print("[DEBUG] Starting background listening...")
             self.stop_listening = self.recognizer.listen_in_background(
                 self.microphone,
                 self._audio_callback,
                 phrase_time_limit=8
             )
+            print("[DEBUG] Background listening started successfully")
             return True
         except Exception as e:
             print(f"[ERROR] Failed to start microphone listening: {e}")
@@ -187,9 +232,26 @@ class EnhancedSpeechRecognizer:
         except Exception as e:
             print(f"[ERROR] Audio callback error: {e}")
 
+    def _detect_language(self, text: str) -> str:
+        """Detect language from recognized text."""
+        if not text:
+            return self.current_language
+
+        # Simple language detection based on Devanagari script for Hindi
+        if any('\u0900' <= char <= '\u097F' for char in text):
+            return 'hi'
+
+        # Check for Hindi keywords
+        hindi_keywords = ['खोलो', 'बंद', 'करो', 'शुरू', 'रोको', 'वॉल्यूम', 'स्क्रीनशॉट']
+        if any(keyword in text for keyword in hindi_keywords):
+            return 'hi'
+
+        # Default to current language or English
+        return self.current_language if self.current_language in self.supported_languages else 'en'
+
     def _recognize_speech(self, audio: sr.AudioData) -> Optional[str]:
         """Attempt speech recognition with fallback engines."""
-        
+
         # Auto mode: try Google first, then Vosk
         if self.current_engine == 'auto':
             # Try Google first
@@ -198,6 +260,13 @@ class EnhancedSpeechRecognizer:
                     self.recognition_stats['google_attempts'] += 1
                     text = self.recognizer.recognize_google(audio)
                     self.recognition_stats['google_successes'] += 1
+
+                    # Detect language and update current language
+                    detected_lang = self._detect_language(text)
+                    if detected_lang != self.current_language:
+                        self.current_language = detected_lang
+                        print(f"[INFO] Language switched to: {detected_lang}")
+
                     return text
                 except sr.UnknownValueError:
                     pass  # Continue to Vosk
@@ -208,43 +277,58 @@ class EnhancedSpeechRecognizer:
             # Fallback to Vosk
             if self.vosk_available:
                 return self._vosk_recognize(audio)
-        
+
         # Specific engine mode
         elif self.current_engine == 'google' and self.google_available:
             try:
                 self.recognition_stats['google_attempts'] += 1
                 text = self.recognizer.recognize_google(audio)
                 self.recognition_stats['google_successes'] += 1
+
+                # Detect language
+                detected_lang = self._detect_language(text)
+                if detected_lang != self.current_language:
+                    self.current_language = detected_lang
+                    print(f"[INFO] Language switched to: {detected_lang}")
+
                 return text
             except Exception as e:
                 print(f"[WARNING] Google recognition failed: {e}")
-        
+
         elif self.current_engine == 'vosk' and self.vosk_available:
             return self._vosk_recognize(audio)
-        
+
         return None
 
     def _vosk_recognize(self, audio: sr.AudioData) -> Optional[str]:
         """Recognize speech using Vosk offline engine."""
         try:
             self.recognition_stats['vosk_attempts'] += 1
-            
-            if self.vosk_recognizer is None:
+
+            # Get the appropriate model and recognizer for current language
+            model = self.vosk_models.get(self.current_language)
+            if not model:
+                print(f"[WARNING] No Vosk model available for language: {self.current_language}")
+                return None
+
+            recognizer = self.vosk_recognizers.get(self.current_language)
+            if recognizer is None:
                 import json
-                self.vosk_recognizer = KaldiRecognizer(self.vosk_model, 16000)
-            
+                recognizer = KaldiRecognizer(model, 16000)
+                self.vosk_recognizers[self.current_language] = recognizer
+
             # Convert audio to 16kHz mono
             audio_data = audio.get_raw_data(convert_rate=16000, convert_width=2)
-            self.vosk_recognizer.AcceptWaveform(audio_data)
-            
-            result = self.vosk_recognizer.Result()
+            recognizer.AcceptWaveform(audio_data)
+
+            result = recognizer.Result()
             if result:
                 result_json = json.loads(result)
                 text = result_json.get('text', '')
                 if text:
                     self.recognition_stats['vosk_successes'] += 1
                     return text
-            
+
             return None
         except Exception as e:
             print(f"[ERROR] Vosk recognition failed: {e}")
@@ -275,17 +359,31 @@ class EnhancedSpeechRecognizer:
         if engine not in ['auto', 'google', 'vosk']:
             print(f"[WARNING] Invalid engine: {engine}")
             return False
-        
+
         if engine == 'vosk' and not self.vosk_available:
             print("[ERROR] Vosk engine not available")
             return False
-        
+
         if engine == 'google' and not self.google_available:
             print("[ERROR] Google engine not available")
             return False
-        
+
         self.current_engine = engine
         print(f"[INFO] Switched to {engine} engine")
+        return True
+
+    def switch_language(self, language: str):
+        """Switch to a different language."""
+        if language not in self.supported_languages:
+            print(f"[WARNING] Unsupported language: {language}")
+            return False
+
+        if language not in self.vosk_models and self.current_engine == 'vosk':
+            print(f"[WARNING] No Vosk model available for language: {language}")
+            return False
+
+        self.current_language = language
+        print(f"[INFO] Switched to language: {language}")
         return True
 
     def get_stats(self) -> dict:

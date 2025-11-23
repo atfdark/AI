@@ -384,6 +384,58 @@ class TestTodoListFeatures(unittest.TestCase):
         self.assertTrue(any(phrase in self.mock_tts.get_last_spoken() for phrase in ["didn't understand", "didn't catch", "not sure", "repeat that"]))
 
 
+class TestSearchFunctionality(unittest.TestCase):
+    """Test cases for search functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_tts = MockTTS()
+        self.actions = Actions()
+        self.parser = EnhancedCommandParser(actions=self.actions, tts=self.mock_tts)
+
+    def test_search_with_summary(self):
+        """Test search that returns a summary."""
+        mock_response = {
+            'AbstractText': 'Python is a programming language.'
+        }
+
+        with patch('requests.get') as mock_get:
+            mock_get.return_value.json.return_value = mock_response
+
+            result = self.parser.parse_intent("search for python")
+            success = self.parser.execute_command(result)
+
+            self.assertTrue(success)
+            spoken = self.mock_tts.get_last_spoken()
+            self.assertIn("Here's what I found about python", spoken)
+            self.assertIn("Python is a programming language", spoken)
+
+    def test_search_fallback_to_browser(self):
+        """Test search that falls back to opening browser when no summary."""
+        with patch('assistant.actions.Actions.perform_search', return_value=None):
+            with patch('webbrowser.open') as mock_open:
+                mock_open.return_value = True
+
+                result = self.parser.parse_intent("search for unknown topic")
+                success = self.parser.execute_command(result)
+
+                self.assertTrue(success)
+                mock_open.assert_called_once()
+                spoken = self.mock_tts.get_last_spoken()
+                self.assertTrue(any(phrase in spoken for phrase in ["Searching for unknown topic", "Let me search for unknown topic", "Looking up unknown topic"]))
+
+    def test_search_api_failure(self):
+        """Test search when API fails."""
+        with patch('assistant.actions.Actions.perform_search', return_value=None):
+            with patch('webbrowser.open', side_effect=Exception("Browser error")):
+
+                result = self.parser.parse_intent("search for test")
+                success = self.parser.execute_command(result)
+
+                self.assertFalse(success)
+                self.assertIn("Sorry, couldn't search for test", self.mock_tts.get_last_spoken())
+
+
 class TestTTSIntegration(unittest.TestCase):
     """Test TTS integration across all features."""
 
@@ -462,6 +514,7 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestWebsiteOpening))
     suite.addTests(loader.loadTestsFromTestCase(TestNewsReporting))
     suite.addTests(loader.loadTestsFromTestCase(TestTodoListFeatures))
+    suite.addTests(loader.loadTestsFromTestCase(TestSearchFunctionality))
     suite.addTests(loader.loadTestsFromTestCase(TestTTSIntegration))
 
     # Run tests

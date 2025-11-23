@@ -6,7 +6,9 @@ pyaudio
 vosk
 numpy
 newsapi-python
-elevenlabs
-pyttsx3
+gtts
+pyperclip
+requests
+wikipedia
 # Optional / advanced
 # openai-whisper
