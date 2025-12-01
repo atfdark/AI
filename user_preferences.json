@@ -1,6 +1,7 @@
 {
   "favorite_apps": [
-    "chrome"
+    "chrome",
+    "edge  open edge"
   ],
   "preferred_search_engine": "google",
   "preferred_voice_gender": "female",
@@ -12,8 +13,8 @@
     "query": "python",
     "topic": "deep learning",
     "location": "current",
-    "application": "chrome",
+    "application": "edge  open edge",
     "engine": "google",
-    "text": "what about machine learning"
+    "text": "yes sir"
   }
 }

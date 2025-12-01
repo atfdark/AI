@@ -2,7 +2,7 @@ import time
 import re
 import json
 import os
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -356,6 +356,8 @@ class EnhancedCommandParser:
 
         patterns.update({
             Intent.WEB_BROWSING: [
+                # High priority: open [site] in [browser]
+                (r'\b(open|launch|visit)\s+(.+?)\s+in\s+(chrome|firefox|edge|opera|safari|browser)\b', 0.95),
                 (r'\b(go\s+to|open|visit|navigate\s+to)\s+(?:website\s+)?(.+?)$', 0.8),
                 (r'\b(browse\s+to|surf\s+to)\s+(.+?)$', 0.75),
                 (r'\b(check\s+out|look\s+at)\s+(.+?)$', 0.6),
@@ -825,12 +827,19 @@ class EnhancedCommandParser:
             parameters['topic'] = topic.strip()
         
         elif intent == Intent.WEB_BROWSING:
-            # Extract website URL or name
-            if match.lastindex >= 2:
+            # Extract website URL or name and optional browser
+            if match.lastindex >= 3:
+                # Pattern with browser: open [site] in [browser]
+                url = match.group(2).strip()
+                browser = match.group(3).strip()
+                parameters['url'] = url
+                parameters['browser'] = browser
+            elif match.lastindex >= 2:
                 url = match.group(2)
+                parameters['url'] = url.strip()
             else:
                 url = match.group(1)
-            parameters['url'] = url.strip()
+                parameters['url'] = url.strip()
         
         elif intent == Intent.SYSTEM_CONTROL:
             # Extract target application/window
@@ -1150,6 +1159,15 @@ class EnhancedCommandParser:
                         parameters.update(params)
                         break  # Use first matching pattern
                 break
+
+        # Special handling for WEB_BROWSING with browser specification
+        if intent == Intent.WEB_BROWSING and 'in' in text.lower():
+            # Check for "open [site] in [browser]" pattern
+            browser_pattern = r'\b(open|launch|visit)\s+(.+?)\s+in\s+(chrome|firefox|edge|opera|safari|browser)\b'
+            match = re.search(browser_pattern, text, re.IGNORECASE)
+            if match:
+                parameters['url'] = match.group(2).strip()
+                parameters['browser'] = match.group(3).strip()
 
         # NER fallback for enhanced parameter extraction
         if self.ner and self.ner.is_trained:
@@ -1504,8 +1522,8 @@ class EnhancedCommandParser:
                         "I'm not sure what you mean"
                     ]
                     import random
-                    self.tts.say(random.choice(responses))
-                    time.sleep(1)  # Prevent microphone from capturing TTS output
+                    self.tts.say(random.choice(responses), sync=True)  # Make TTS synchronous to prevent feedback loop
+                    time.sleep(2)  # Longer delay to ensure TTS completes and prevent microphone capture
                     return False
             else:
                 responses = [
@@ -1521,8 +1539,8 @@ class EnhancedCommandParser:
 
         except Exception as e:
             print(f"[ERROR] Command execution failed: {e}")
-            self.tts.say("Sorry, there was an error executing that command")
-            time.sleep(1)  # Prevent microphone from capturing TTS output
+            self.tts.say("Sorry, there was an error executing that command", sync=True)  # Make TTS synchronous to prevent feedback loop
+            time.sleep(2)  # Longer delay to ensure TTS completes and prevent microphone capture
 
             # Track failed command
             if track_command:
@@ -1558,8 +1576,57 @@ class EnhancedCommandParser:
         self.actions.type_text(text)
         return True
 
+    def _should_fallback_to_web_browsing(self, app_name: str) -> bool:
+        """Check if an application name should fallback to web browsing."""
+        if not app_name:
+            return False
+
+        app_lower = app_name.lower().strip()
+
+        # First check: if this is a known local application, don't fallback
+        known_apps = [app.lower() for app in self.actions.get_known_apps()]
+        for known_app in known_apps:
+            if known_app in app_lower or app_lower in known_app:
+                return False
+
+        # Check for obvious website patterns
+        if '.' in app_lower:
+            # Contains dots - likely a domain
+            return True
+
+        # Check for common web applications/services (multi-word support)
+        web_apps = [
+            'github', 'gitlab', 'bitbucket', 'stackoverflow', 'stack overflow', 'reddit',
+            'facebook', 'twitter', 'instagram', 'linkedin', 'youtube',
+            'gmail', 'outlook', 'yahoo', 'hotmail', 'drive', 'docs', 'google drive',
+            'slack', 'discord', 'teams', 'zoom', 'meet', 'webex',
+            'notion', 'trello', 'asana', 'jira', 'confluence',
+            'netflix', 'spotify', 'twitch', 'amazon', 'ebay', 'craigslist',
+            'wikipedia', 'wikimedia', 'mozilla', 'firefox', 'chrome', 'edge',
+            'whatsapp', 'telegram', 'skype', 'dropbox', 'onedrive'
+        ]
+
+        # Check for exact matches or partial matches
+        app_words = set(app_lower.split())
+        for web_app in web_apps:
+            web_app_words = set(web_app.split())
+            # Check if all words of the web app are in the app name
+            if web_app_words.issubset(app_words):
+                return True
+            # Or if the web app name is contained in the app name
+            if web_app in app_lower:
+                return True
+
+        # Check for common website prefixes
+        website_indicators = ['www', 'http', 'https', 'com', 'org', 'net', 'edu', 'gov']
+        for indicator in website_indicators:
+            if indicator in app_lower:
+                return True
+
+        return False
+
     def _handle_open_application(self, result: CommandResult) -> bool:
-        """Handle application opening commands."""
+        """Handle application opening commands with fallback to web browsing."""
         app_name = result.parameters.get('application', '')
 
         # Find best match for application name
@@ -1589,9 +1656,21 @@ class EnhancedCommandParser:
                 time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
         else:
-            self.tts.say(f"I don't know how to open {app_name}")
-            time.sleep(1)  # Prevent microphone from capturing TTS output
-            return False
+            # Fallback: Check if this might be a website/application that should be opened in browser
+            if self._should_fallback_to_web_browsing(app_name):
+                print(f"[FALLBACK] '{app_name}' not found as app, trying web browsing")
+                # Create a web browsing result
+                web_result = CommandResult(
+                    intent=Intent.WEB_BROWSING,
+                    confidence=0.8,  # Lower confidence since this is a fallback
+                    action="web_browsing",
+                    parameters={'url': app_name}
+                )
+                return self._handle_web_browsing(web_result)
+            else:
+                self.tts.say(f"I don't know how to open {app_name}")
+                time.sleep(1)  # Prevent microphone from capturing TTS output
+                return False
 
     def _handle_close_window(self, result: CommandResult) -> bool:
         """Handle window closing commands."""
@@ -1708,19 +1787,66 @@ class EnhancedCommandParser:
     def _handle_web_browsing(self, result: CommandResult) -> bool:
         """Handle web browsing commands."""
         url = result.parameters.get('url', '')
+        browser = result.parameters.get('browser', '')
+
         if url:
-            success = self.actions.open_url(url)
+            # Handle browser-specific opening
+            if browser:
+                success = self._open_url_in_browser(url, browser)
+            else:
+                success = self.actions.open_url(url)
+
             if success:
-                responses = [f"Opening {url}", f"Going to {url}", f"Navigating to {url}"]
+                if browser:
+                    responses = [f"Opening {url} in {browser}", f"Going to {url} in {browser}", f"Navigating to {url} in {browser}"]
+                else:
+                    responses = [f"Opening {url}", f"Going to {url}", f"Navigating to {url}"]
                 import random
                 self.tts.say(random.choice(responses))
                 time.sleep(1)  # Prevent microphone from capturing TTS output
                 return True
             else:
-                self.tts.say(f"Sorry, couldn't open {url}")
+                if browser:
+                    self.tts.say(f"Sorry, couldn't open {url} in {browser}")
+                else:
+                    self.tts.say(f"Sorry, couldn't open {url}")
                 time.sleep(1)  # Prevent microphone from capturing TTS output
                 return False
         return False
+
+    def _open_url_in_browser(self, url: str, browser: str) -> bool:
+        """Open URL in a specific browser."""
+        try:
+            # Add protocol if missing
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+
+            # Map browser names to executable paths
+            browser_paths = {
+                'chrome': 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                'firefox': 'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
+                'edge': 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+                'opera': 'C:\\Program Files\\Opera\\launcher.exe',
+                'safari': None  # Safari not available on Windows
+            }
+
+            browser_path = browser_paths.get(browser.lower())
+            if not browser_path:
+                print(f"[ERROR] Browser '{browser}' not supported or not found")
+                return False
+
+            if not os.path.exists(browser_path):
+                print(f"[ERROR] Browser executable not found: {browser_path}")
+                return False
+
+            # Launch browser with URL
+            import subprocess
+            subprocess.Popen([browser_path, url])
+            return True
+
+        except Exception as e:
+            print(f"[ERROR] Failed to open {url} in {browser}: {e}")
+            return False
 
     def _handle_news_reporting(self, result: CommandResult) -> bool:
         """Handle news reporting commands."""

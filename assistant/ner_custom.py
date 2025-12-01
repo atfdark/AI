@@ -6,7 +6,7 @@ Uses spaCy with transformer for enhanced accuracy
 import os
 import random
 import time
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from .ner_training_data import TRAINING_DATA
 
 try:

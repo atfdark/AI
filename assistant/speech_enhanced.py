@@ -44,7 +44,6 @@ class EnhancedSpeechRecognizer:
 
     def __init__(self, callback: Optional[Callable] = None, config_path: str = None, wake_word_callback: Optional[Callable] = None):
         self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
         self.callback = callback
         self.wake_word_callback = wake_word_callback
         self.config_path = config_path  # Store config_path as instance attribute
@@ -58,6 +57,12 @@ class EnhancedSpeechRecognizer:
         # Wake word settings
         self.wake_word_enabled = self.config.get('wake_word', {}).get('enabled', False)
         self.wake_word = self.config.get('wake_word', {}).get('word', 'jarvis').lower()
+
+        # Microphone device settings
+        self.preferred_microphone = self.config.get('speech_recognition', {}).get('preferred_microphone')
+
+        # Select appropriate microphone device to avoid feedback loop
+        self.microphone = self._select_microphone_device()
 
         # Recognition engines
         self.google_available = True
@@ -102,6 +107,88 @@ class EnhancedSpeechRecognizer:
             'text_correction_failures': 0,
             'low_confidence_corrections': 0
         }
+
+    def _select_microphone_device(self) -> sr.Microphone:
+        """Select an appropriate microphone device to avoid feedback loops.
+
+        Avoids devices like 'Stereo Mix', 'Speakers', etc. that capture speaker output.
+        """
+        try:
+            # Get list of all microphone devices
+            devices = sr.Microphone.list_microphone_names()
+            print(f"[INFO] Found {len(devices)} audio input devices")
+
+            # Check if user has configured a preferred microphone
+            if self.preferred_microphone:
+                for i, device_name in enumerate(devices):
+                    if self.preferred_microphone.lower() in device_name.lower():
+                        print(f"[INFO] Using configured microphone: {device_name} (index: {i})")
+                        return sr.Microphone(device_index=i)
+                print(f"[WARNING] Configured microphone '{self.preferred_microphone}' not found")
+
+            # Problematic device patterns to avoid (cause feedback loops)
+            problematic_patterns = [
+                'stereo mix', 'mono mix', 'wave out', 'what u hear',
+                'speakers', 'headphones', 'output', 'playback',
+                'sound mapper', 'primary sound capture',
+                'steam streaming speak', 'steam streaming micro',
+                'steam streaming mic'  # This one was truncated in the list
+            ]
+
+            # Preferred device patterns (actual microphones)
+            preferred_patterns = [
+                'microphone', 'mic', 'input', 'line in'
+            ]
+
+            selected_device = None
+            selected_index = None
+
+            # First, try to find a preferred microphone device
+            for i, device_name in enumerate(devices):
+                device_lower = device_name.lower()
+
+                # Skip problematic devices
+                if any(pattern in device_lower for pattern in problematic_patterns):
+                    print(f"[DEBUG] Skipping problematic device {i}: {device_name}")
+                    continue
+
+                # Check if this is a preferred device
+                if any(pattern in device_lower for pattern in preferred_patterns):
+                    selected_device = device_name
+                    selected_index = i
+                    print(f"[INFO] Selected preferred microphone: {device_name} (index: {i})")
+                    break
+
+            # If no preferred device found, try any non-problematic device
+            if selected_device is None:
+                for i, device_name in enumerate(devices):
+                    device_lower = device_name.lower()
+
+                    # Skip only the most problematic ones
+                    if any(pattern in device_lower for pattern in ['stereo mix', 'speakers', 'output']):
+                        continue
+
+                    selected_device = device_name
+                    selected_index = i
+                    print(f"[INFO] Selected fallback microphone: {device_name} (index: {i})")
+                    break
+
+            # If still no device selected, use system default but warn
+            if selected_device is None:
+                print("[WARNING] No suitable microphone found, using system default")
+                print("[WARNING] This may cause audio feedback loops!")
+                return sr.Microphone()
+
+            # Create microphone with selected device
+            microphone = sr.Microphone(device_index=selected_index)
+            print(f"[INFO] Microphone device selected: {selected_device} (index: {selected_index})")
+
+            return microphone
+
+        except Exception as e:
+            print(f"[ERROR] Failed to select microphone device: {e}")
+            print("[WARNING] Falling back to system default microphone")
+            return sr.Microphone()
 
     def _load_config(self, config_path: str = None) -> dict:
         """Load configuration."""
@@ -291,6 +378,8 @@ class EnhancedSpeechRecognizer:
                 original_text = text.strip()
                 text_lower = original_text.lower()
 
+                # Diagnostic logging for feedback loop detection
+                print(f"[DEBUG] Recognized text: '{original_text}' (length: {len(original_text)})")
                 logger.info(f"Audio processed, recognized text: '{original_text}'")
 
                 # Apply text correction if available

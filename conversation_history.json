@@ -1,48 +1,134 @@
 {
-  "session_id": "session_1764594276",
-  "session_start": 1764594276.694939,
-  "last_activity": 1764594276.713251,
+  "session_id": "session_1764600715",
+  "session_start": 1764600715.2179942,
+  "last_activity": 1764600815.922774,
   "history": [
     {
-      "timestamp": 1764594276.7012553,
-      "user_input": "open chrome",
+      "timestamp": 1764600738.538031,
+      "user_input": "open",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "open"
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764600753.6900084,
+      "user_input": "open edge  open edge",
       "intent": "open_application",
       "confidence": 0.9,
       "entities": {
-        "application": "chrome"
+        "application": "edge  open edge"
       },
-      "response": "Executed open_application",
+      "response": "Opening edge  open edge",
       "success": true,
       "context_references": []
     },
     {
-      "timestamp": 1764594276.7096386,
-      "user_input": "search for python",
-      "intent": "search",
-      "confidence": 0.9,
-      "entities": {
-        "query": "python",
-        "engine": "google"
-      },
-      "response": "Executed search",
-      "success": true,
-      "context_references": []
-    },
-    {
-      "timestamp": 1764594276.713251,
-      "user_input": "tell me more about it",
-      "intent": "search",
+      "timestamp": 1764600757.0688443,
+      "user_input": "yes sir",
+      "intent": "unknown",
       "confidence": 0.0,
       "entities": {
-        "query": "python",
-        "engine": "google"
+        "text": "yes sir"
       },
-      "response": "Executed search",
+      "response": "Executed unknown",
       "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764600768.9874017,
+      "user_input": "i'm known.",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "i'm known."
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764600781.7567112,
+      "user_input": "that command didn't Word as expected.",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "that command didn't word as expected."
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
       "context_references": [
-        "last_entity",
-        "repeat_query",
-        "repeat_engine"
+        "previous_result"
+      ]
+    },
+    {
+      "timestamp": 1764600789.1121283,
+      "user_input": "you repeat that.",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "you repeat that."
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": [
+        "previous_result"
+      ]
+    },
+    {
+      "timestamp": 1764600795.4917452,
+      "user_input": "handle this differently.",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "handle this differently."
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": [
+        "current_context"
+      ]
+    },
+    {
+      "timestamp": 1764600801.2752185,
+      "user_input": "i didn't cat",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "i didn't cat"
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764600809.556149,
+      "user_input": "settings me know.",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "settings me know."
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764600815.9227748,
+      "user_input": "that command didn't Word as expected.",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "that command didn't word as expected."
+      },
+      "response": "Failed to execute unknown",
+      "success": false,
+      "context_references": [
+        "previous_result"
       ]
     }
   ]

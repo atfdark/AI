@@ -33,6 +33,15 @@ class VoiceAssistant:
         # Initialize components
         self.tts = TTS()
         self.actions = Actions()
+
+        # Initialize dialogue state tracker first
+        dialogue_config = self.config.get('dialogue_state', {})
+        self.dialogue_tracker = DialogueStateTracker(
+            config_path=self.config_path,
+            max_history=dialogue_config.get('max_history', 50),
+            session_timeout=dialogue_config.get('session_timeout', 1800)
+        )
+
         self.parser = EnhancedCommandParser(
             actions=self.actions,
             tts=self.tts,
@@ -44,14 +53,6 @@ class VoiceAssistant:
             callback=self._handle_command_text,
             wake_word_callback=self._handle_wake_word,
             config_path=self.config_path
-        )
-
-        # Initialize dialogue state tracker
-        dialogue_config = self.config.get('dialogue_state', {})
-        self.dialogue_tracker = DialogueStateTracker(
-            config_path=self.config_path,
-            max_history=dialogue_config.get('max_history', 50),
-            session_timeout=dialogue_config.get('session_timeout', 1800)
         )
         
         # Assistant state
@@ -380,7 +381,8 @@ class VoiceAssistant:
                     session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
                 )
                 self.feedback_collector.add_feedback(feedback_entry)
-                self.tts.say("Thank you for the feedback!", sync=False)
+                self.tts.say("Thank you for the feedback!", sync=True)
+                time.sleep(1)  # Prevent microphone capture
 
             # Handle correction responses
             elif 'correction' in self.pending_feedback_request.get('context', {}):
@@ -396,7 +398,8 @@ class VoiceAssistant:
                     session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
                 )
                 self.feedback_collector.add_feedback(feedback_entry)
-                self.tts.say("Got it, I'll learn from that correction.", sync=False)
+                self.tts.say("Got it, I'll learn from that correction.", sync=True)
+                time.sleep(1)  # Prevent microphone capture
 
             # Handle yes/no confirmation
             elif text_lower in ['yes', 'y', 'correct', 'right']:
@@ -411,7 +414,8 @@ class VoiceAssistant:
                     session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
                 )
                 self.feedback_collector.add_feedback(feedback_entry)
-                self.tts.say("Great! Glad I got that right.", sync=False)
+                self.tts.say("Great! Glad I got that right.", sync=True)
+                time.sleep(1)  # Prevent microphone capture
 
             elif text_lower in ['no', 'n', 'wrong', 'incorrect']:
                 feedback_entry = FeedbackEntry(
@@ -425,7 +429,8 @@ class VoiceAssistant:
                     session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
                 )
                 self.feedback_collector.add_feedback(feedback_entry)
-                self.tts.say("Sorry about that. What should I have done instead?", sync=False)
+                self.tts.say("Sorry about that. What should I have done instead?", sync=True)
+                time.sleep(1)  # Prevent microphone capture
                 # Could set up for correction input here
 
             else:
@@ -441,11 +446,13 @@ class VoiceAssistant:
                     session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
                 )
                 self.feedback_collector.add_feedback(feedback_entry)
-                self.tts.say("Thanks for letting me know!", sync=False)
+                self.tts.say("Thanks for letting me know!", sync=True)
+                time.sleep(1)  # Prevent microphone capture
 
         except Exception as e:
             print(f"[ERROR] Failed to process feedback response: {e}")
-            self.tts.say("I didn't catch that feedback. Let's continue.", sync=False)
+            self.tts.say("I didn't catch that feedback. Let's continue.", sync=True)
+            time.sleep(1)  # Prevent microphone capture
 
         # Clear pending feedback
         self.pending_feedback_request = None
