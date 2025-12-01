@@ -1,0 +1,245 @@
+C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\pygame\pkgdata.py:25: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_stream, resource_exists
+pygame 2.6.1 (SDL 2.28.4, Python 3.13.1)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+[NER] Loaded trained model from c:\Users\Admin\OneDrive\Desktop\Coding\AI\assistant\models\custom_ner
+[PARSER] NER initialized for enhanced parameter extraction
+Starting comprehensive ML vs Regex comparison tests...
+This may take a few minutes...
+Running intent classification tests...
+  Testing case 1/66: 'open chrome'
+    Regex: open_application (expected: open_application) - PASS
+    ML: open_application (expected: open_application) - PASS
+  Testing case 2/66: 'launch firefox'
+    Regex: open_application (expected: open_application) - PASS
+    ML: open_application (expected: open_application) - PASS
+  Testing case 3/66: 'start word'
+    Regex: open_application (expected: open_application) - PASS
+    ML: open_application (expected: open_application) - PASS
+  Testing case 4/66: 'run excel'
+    Regex: open_application (expected: open_application) - PASS
+    ML: open_application (expected: open_application) - PASS
+  Testing case 5/66: 'volume up'
+    Regex: volume_control (expected: volume_control) - PASS
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 6/66: 'increase volume'
+    Regex: volume_control (expected: volume_control) - PASS
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 7/66: 'turn volume down'
+    Regex: volume_control (expected: volume_control) - PASS
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 8/66: 'decrease volume'
+    Regex: volume_control (expected: volume_control) - PASS
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 9/66: 'mute'
+    Regex: volume_control (expected: volume_control) - PASS
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 10/66: 'copy'
+    Regex: text_operation (expected: text_operation) - PASS
+    ML: text_operation (expected: text_operation) - PASS
+  Testing case 11/66: 'paste'
+    Regex: text_operation (expected: text_operation) - PASS
+    ML: text_operation (expected: text_operation) - PASS
+  Testing case 12/66: 'select all'
+    Regex: text_operation (expected: text_operation) - PASS
+    ML: text_operation (expected: text_operation) - PASS
+  Testing case 13/66: 'save'
+    Regex: text_operation (expected: text_operation) - PASS
+    ML: text_operation (expected: text_operation) - PASS
+  Testing case 14/66: 'take screenshot'
+    Regex: screenshot (expected: screenshot) - PASS
+[NER] Enhanced parameter extraction: application = screenshot
+    ML: screenshot (expected: screenshot) - PASS
+  Testing case 15/66: 'capture screen'
+    Regex: unknown (expected: screenshot) - FAIL
+    ML: screenshot (expected: screenshot) - PASS
+  Testing case 16/66: 'search for python'
+    Regex: search (expected: search) - PASS
+    ML: search (expected: search) - PASS
+  Testing case 17/66: 'google machine learning'
+    Regex: search (expected: search) - PASS
+    ML: search (expected: search) - PASS
+  Testing case 18/66: 'find information about AI'
+    Regex: search (expected: search) - PASS
+    ML: search (expected: search) - PASS
+  Testing case 19/66: 'what is python'
+    Regex: wikipedia (expected: wikipedia) - PASS
+[NER] Enhanced parameter extraction: query = python
+    ML: wikipedia (expected: wikipedia) - PASS
+  Testing case 20/66: 'tell me about machine learning'
+    Regex: wikipedia (expected: wikipedia) - PASS
+[NER] Enhanced parameter extraction: query = about machine
+    ML: wikipedia (expected: wikipedia) - PASS
+  Testing case 21/66: 'who is Albert Einstein'
+    Regex: wikipedia (expected: wikipedia) - PASS
+[NER] Enhanced parameter extraction: query = albert einstein
+    ML: wikipedia (expected: wikipedia) - PASS
+  Testing case 22/66: 'go to google.com'
+    Regex: web_browsing (expected: web_browsing) - PASS
+    ML: web_browsing (expected: web_browsing) - PASS
+  Testing case 23/66: 'open youtube'
+    Regex: open_application (expected: web_browsing) - FAIL
+    ML: open_application (expected: web_browsing) - FAIL
+  Testing case 24/66: 'visit github.com'
+    Regex: unknown (expected: web_browsing) - FAIL
+    ML: web_browsing (expected: web_browsing) - PASS
+  Testing case 25/66: 'start dictation'
+    Regex: open_application (expected: switch_mode) - FAIL
+    ML: switch_mode (expected: switch_mode) - PASS
+  Testing case 26/66: 'stop dictation'
+    Regex: switch_mode (expected: switch_mode) - PASS
+    ML: switch_mode (expected: switch_mode) - PASS
+  Testing case 27/66: 'tell me the news'
+    Regex: unknown (expected: news_reporting) - FAIL
+    ML: news_reporting (expected: news_reporting) - PASS
+  Testing case 28/66: 'get latest news'
+    Regex: unknown (expected: news_reporting) - FAIL
+[NER] Enhanced parameter extraction: application = news
+    ML: news_reporting (expected: news_reporting) - PASS
+  Testing case 29/66: 'search youtube for python tutorials'
+    Regex: unknown (expected: youtube) - FAIL
+    ML: youtube (expected: youtube) - PASS
+  Testing case 30/66: 'download audio from youtube'
+    Regex: unknown (expected: youtube) - FAIL
+[NER] Enhanced parameter extraction: application = youtube
+    ML: youtube (expected: youtube) - PASS
+  Testing case 31/66: 'tell me a joke'
+    Regex: jokes (expected: jokes) - PASS
+[NER] Enhanced parameter extraction: application = joke
+    ML: jokes (expected: jokes) - PASS
+  Testing case 32/66: 'tell a programming joke'
+    Regex: unknown (expected: jokes) - FAIL
+    ML: jokes (expected: jokes) - PASS
+  Testing case 33/66: 'where am I'
+    Regex: unknown (expected: location_services) - FAIL
+[NER] Enhanced parameter extraction: query = am
+    ML: location_services (expected: location_services) - PASS
+  Testing case 34/66: 'find coordinates for New York'
+    Regex: search (expected: location_services) - FAIL
+[NER] Enhanced parameter extraction: location = new york
+    ML: search (expected: location_services) - FAIL
+  Testing case 35/66: 'what's my CPU usage'
+    Regex: unknown (expected: system_monitoring) - FAIL
+    ML: system_monitoring (expected: system_monitoring) - PASS
+  Testing case 36/66: 'how much memory is free'
+    Regex: unknown (expected: system_monitoring) - FAIL
+[NER] Enhanced parameter extraction: query = much memory
+    ML: system_monitoring (expected: system_monitoring) - PASS
+  Testing case 37/66: 'compare prices for iPhone'
+    Regex: unknown (expected: price_comparison) - FAIL
+[NER] Enhanced parameter extraction: query = iphone
+    ML: price_comparison (expected: price_comparison) - PASS
+  Testing case 38/66: 'find recipe for pasta'
+    Regex: search (expected: recipe_lookup) - FAIL
+    ML: search (expected: recipe_lookup) - FAIL
+  Testing case 39/66: 'define algorithm'
+    Regex: dictionary (expected: dictionary) - PASS
+[NER] Enhanced parameter extraction: application = algorithm
+    ML: dictionary (expected: dictionary) - PASS
+  Testing case 40/66: 'what does photosynthesis mean'
+    Regex: dictionary (expected: dictionary) - PASS
+    ML: dictionary (expected: dictionary) - PASS
+  Testing case 41/66: 'stock price of Apple'
+    Regex: unknown (expected: stock_price) - FAIL
+[NER] Enhanced parameter extraction: query = apple
+    ML: stock_price (expected: stock_price) - PASS
+  Testing case 42/66: 'weather in London'
+    Regex: weather (expected: weather) - PASS
+    ML: weather (expected: weather) - PASS
+  Testing case 43/66: 'how's the weather in New York'
+    Regex: unknown (expected: weather) - FAIL
+    ML: weather (expected: weather) - PASS
+  Testing case 44/66: 'system info'
+    Regex: unknown (expected: windows_system_info) - FAIL
+[NER] Enhanced parameter extraction: application = info
+    ML: windows_system_info (expected: windows_system_info) - PASS
+  Testing case 45/66: 'create file test.txt'
+    Regex: unknown (expected: file_operation) - FAIL
+    ML: unknown (expected: file_operation) - FAIL
+  Testing case 46/66: 'start service Spooler'
+    Regex: open_application (expected: windows_services) - FAIL
+    ML: open_application (expected: windows_services) - FAIL
+  Testing case 47/66: 'change voice to male'
+    Regex: unknown (expected: tts_control) - FAIL
+[NER] Enhanced parameter extraction: query = male
+    ML: tts_control (expected: tts_control) - PASS
+  Testing case 48/66: 'create todo list for shopping'
+    Regex: unknown (expected: todo_generation) - FAIL
+[NER] Enhanced parameter extraction: query = shopping
+    ML: todo_generation (expected: todo_generation) - PASS
+  Testing case 49/66: 'add buy milk to todo'
+    Regex: unknown (expected: todo_management) - FAIL
+    ML: unknown (expected: todo_management) - FAIL
+  Testing case 50/66: 'show my todo lists'
+    Regex: unknown (expected: todo_management) - FAIL
+    ML: todo_management (expected: todo_management) - PASS
+  Testing case 51/66: 'I want to open Chrome browser'
+    Regex: unknown (expected: open_application) - FAIL
+    ML: open_application (expected: open_application) - PASS
+  Testing case 52/66: 'please increase the volume'
+    Regex: unknown (expected: volume_control) - FAIL
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 53/66: 'can you search for machine learning tutorials'
+    Regex: unknown (expected: search) - FAIL
+    ML: search (expected: search) - PASS
+  Testing case 54/66: 'I'd like to know what Python programming is'
+    Regex: unknown (expected: wikipedia) - FAIL
+    ML: unknown (expected: wikipedia) - FAIL
+  Testing case 55/66: 'open chrome and search for python programming tutorials'
+    Regex: open_application (expected: search) - FAIL
+[NER] Enhanced parameter extraction: query = python programming
+    ML: open_application (expected: search) - FAIL
+  Testing case 56/66: 'tell me a joke and then search for funny cat videos on youtube'
+    Regex: jokes (expected: jokes) - PASS
+[NER] Enhanced parameter extraction: application = youtube
+    ML: search (expected: jokes) - FAIL
+  Testing case 57/66: 'check the weather in New York and then find restaurants nearby'
+    Regex: unknown (expected: weather) - FAIL
+[NER] Enhanced parameter extraction: location = new york
+    ML: search (expected: weather) - FAIL
+  Testing case 58/66: ''
+    Regex: unknown (expected: unknown) - PASS
+    ML: unknown (expected: unknown) - PASS
+  Testing case 59/66: '   '
+    Regex: unknown (expected: unknown) - PASS
+    ML: unknown (expected: unknown) - PASS
+  Testing case 60/66: 'blah blah blah'
+    Regex: unknown (expected: unknown) - PASS
+    ML: unknown (expected: unknown) - PASS
+  Testing case 61/66: '123456789'
+    Regex: unknown (expected: unknown) - PASS
+    ML: unknown (expected: unknown) - PASS
+  Testing case 62/66: '!@#$%^&*()'
+    Regex: unknown (expected: unknown) - PASS
+    ML: unknown (expected: unknown) - PASS
+  Testing case 63/66: 'open word'
+    Regex: open_application (expected: open_application) - PASS
+    ML: open_application (expected: open_application) - PASS
+  Testing case 64/66: 'take screenshot'
+    Regex: screenshot (expected: screenshot) - PASS
+[NER] Enhanced parameter extraction: application = screenshot
+    ML: screenshot (expected: screenshot) - PASS
+  Testing case 65/66: 'volume up'
+    Regex: volume_control (expected: volume_control) - PASS
+    ML: volume_control (expected: volume_control) - PASS
+  Testing case 66/66: 'search for python'
+    Regex: search (expected: search) - PASS
+    ML: search (expected: search) - PASS
+Running NER performance tests...
+[NER] Enhanced parameter extraction: location = san francisco
+Running text correction tests...
+Running dialogue state tracking tests...
+
+Test completed successfully!
+Report saved to ml_comparison_report.txt
+Traceback (most recent call last):
+  File "c:\Users\Admin\OneDrive\Desktop\Coding\AI\test_ml_comparison.py", line 702, in <module>
+    main()
+    ~~~~^^
+  File "c:\Users\Admin\OneDrive\Desktop\Coding\AI\test_ml_comparison.py", line 698, in main
+    print("\n" + report)
+    ~~~~~^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 1217: character maps to <undefined>

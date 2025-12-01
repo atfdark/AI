@@ -1,0 +1,49 @@
+{
+  "session_id": "session_1764594276",
+  "session_start": 1764594276.694939,
+  "last_activity": 1764594276.713251,
+  "history": [
+    {
+      "timestamp": 1764594276.7012553,
+      "user_input": "open chrome",
+      "intent": "open_application",
+      "confidence": 0.9,
+      "entities": {
+        "application": "chrome"
+      },
+      "response": "Executed open_application",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764594276.7096386,
+      "user_input": "search for python",
+      "intent": "search",
+      "confidence": 0.9,
+      "entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "response": "Executed search",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1764594276.713251,
+      "user_input": "tell me more about it",
+      "intent": "search",
+      "confidence": 0.0,
+      "entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "response": "Executed search",
+      "success": true,
+      "context_references": [
+        "last_entity",
+        "repeat_query",
+        "repeat_engine"
+      ]
+    }
+  ]
+}

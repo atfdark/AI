@@ -1,0 +1,19 @@
+{
+  "favorite_apps": [
+    "chrome"
+  ],
+  "preferred_search_engine": "google",
+  "preferred_voice_gender": "female",
+  "preferred_speech_rate": 180,
+  "preferred_volume": 0.8,
+  "location_context": "current",
+  "custom_commands": {},
+  "last_used_entities": {
+    "query": "python",
+    "topic": "deep learning",
+    "location": "current",
+    "application": "chrome",
+    "engine": "google",
+    "text": "what about machine learning"
+  }
+}

@@ -1,0 +1,4 @@
+{"timestamp": "2025-12-01T19:43:29.872323", "level": "INFO", "logger": "assistant.model_optimizer", "message": "Garbage collection performed", "module": "model_optimizer", "function": "optimize_model_memory", "line": 428}
+{"timestamp": "2025-12-01T19:44:23.905965", "level": "INFO", "logger": "assistant.model_optimizer", "message": "Quantized sklearn model using float16 method", "module": "model_optimizer", "function": "quantize_sklearn_model", "line": 64}
+{"timestamp": "2025-12-01T19:44:26.428746", "level": "INFO", "logger": "assistant.model_optimizer", "message": "Benchmark 'intent_classifier_inference_benchmark' completed: 2.522s, 15 operations", "module": "model_optimizer", "function": "end_benchmark", "line": 275}
+{"timestamp": "2025-12-01T19:44:26.633502", "level": "INFO", "logger": "assistant.model_optimizer", "message": "Garbage collection performed", "module": "model_optimizer", "function": "optimize_model_memory", "line": 428}

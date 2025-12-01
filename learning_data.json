@@ -1,0 +1,110 @@
+{
+  "intent_corrections": [
+    {
+      "timestamp": 1764596162.4459803,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1764596205.4371672,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1764596205.4678264,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
+    }
+  ],
+  "entity_corrections": [
+    {
+      "timestamp": 1764596162.4459834,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    },
+    {
+      "timestamp": 1764596205.43717,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    },
+    {
+      "timestamp": 1764596205.4678285,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    }
+  ],
+  "successful_patterns": [
+    {
+      "timestamp": 1764596162.4459686,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1764596205.437157,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1764596205.467816,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
+    }
+  ],
+  "failed_patterns": [],
+  "preference_updates": [],
+  "last_updated": 1764596205.5035083
+}

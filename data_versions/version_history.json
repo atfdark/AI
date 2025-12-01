@@ -1,0 +1,74 @@
+{
+  "test_data": [
+    {
+      "version_id": "test_data_20251201T200319236339_b28a178e",
+      "dataset_name": "test_data",
+      "created_at": "2025-12-01T20:03:19.236339",
+      "data_hash": "b28a178e",
+      "data_size": 461,
+      "record_count": 2,
+      "metadata": {}
+    },
+    {
+      "version_id": "test_data_20251201T200511652242_f57b4d44",
+      "dataset_name": "test_data",
+      "created_at": "2025-12-01T20:05:11.652242",
+      "data_hash": "f57b4d44",
+      "data_size": 460,
+      "record_count": 2,
+      "metadata": {}
+    }
+  ],
+  "feedback_data": [
+    {
+      "version_id": "feedback_data_20251201T200319257923_6e5936de",
+      "dataset_name": "feedback_data",
+      "created_at": "2025-12-01T20:03:19.257923",
+      "data_hash": "6e5936de",
+      "data_size": 6049,
+      "record_count": 15,
+      "metadata": {
+        "quality_score": 0.9983165893195167,
+        "learning_cycle": "2025-12-01T20:03:19.257911"
+      }
+    },
+    {
+      "version_id": "feedback_data_20251201T200511670739_01116f6a",
+      "dataset_name": "feedback_data",
+      "created_at": "2025-12-01T20:05:11.670739",
+      "data_hash": "01116f6a",
+      "data_size": 6049,
+      "record_count": 15,
+      "metadata": {
+        "quality_score": 0.9982608289853447,
+        "learning_cycle": "2025-12-01T20:05:11.670735"
+      }
+    }
+  ],
+  "model_data": [
+    {
+      "version_id": "model_data_20251201T200319261556_99914b93",
+      "dataset_name": "model_data",
+      "created_at": "2025-12-01T20:03:19.261556",
+      "data_hash": "99914b93",
+      "data_size": 2,
+      "record_count": 0,
+      "metadata": {
+        "quality_score": 0.0,
+        "learning_cycle": "2025-12-01T20:03:19.261552"
+      }
+    },
+    {
+      "version_id": "model_data_20251201T200511673055_99914b93",
+      "dataset_name": "model_data",
+      "created_at": "2025-12-01T20:05:11.673055",
+      "data_hash": "99914b93",
+      "data_size": 2,
+      "record_count": 0,
+      "metadata": {
+        "quality_score": 0.0,
+        "learning_cycle": "2025-12-01T20:05:11.673051"
+      }
+    }
+  ]
+}

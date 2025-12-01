@@ -16,6 +16,9 @@ from .tts import TTS
 from .actions import Actions
 from .parser_enhanced import EnhancedCommandParser
 from .speech_enhanced import EnhancedSpeechRecognizer
+from .dialogue_state_tracker import DialogueStateTracker
+from .feedback_system import get_feedback_collector, get_online_learner, get_preference_adapter, FeedbackType, Rating, FeedbackEntry
+from .performance_monitor import get_performance_monitor, record_command_performance
 
 
 class VoiceAssistant:
@@ -31,14 +34,24 @@ class VoiceAssistant:
         self.tts = TTS()
         self.actions = Actions()
         self.parser = EnhancedCommandParser(
-            actions=self.actions, 
+            actions=self.actions,
             tts=self.tts,
-            config_path=self.config_path
+            config_path=self.config_path,
+            dialogue_tracker=self.dialogue_tracker,
+            feedback_callback=self._request_feedback
         )
         self.recognizer = EnhancedSpeechRecognizer(
             callback=self._handle_command_text,
             wake_word_callback=self._handle_wake_word,
             config_path=self.config_path
+        )
+
+        # Initialize dialogue state tracker
+        dialogue_config = self.config.get('dialogue_state', {})
+        self.dialogue_tracker = DialogueStateTracker(
+            config_path=self.config_path,
+            max_history=dialogue_config.get('max_history', 50),
+            session_timeout=dialogue_config.get('session_timeout', 1800)
         )
         
         # Assistant state
@@ -57,7 +70,28 @@ class VoiceAssistant:
         
         # Performance monitoring
         self.performance_monitor = PerformanceMonitor()
-        
+        self.performance_monitor_main = get_performance_monitor()
+        self.performance_monitor_main.start_monitoring()
+
+        # Initialize feedback system
+        self.feedback_collector = get_feedback_collector(self.config_path)
+        self.online_learner = get_online_learner()
+        self.preference_adapter = get_preference_adapter()
+
+        # Initialize data collection pipeline
+        try:
+            from .data_collection_pipeline import get_data_pipeline
+            self.data_pipeline = get_data_pipeline()
+            self.data_pipeline.start_pipeline()
+            print("[INFO] Data collection pipeline started")
+        except ImportError:
+            self.data_pipeline = None
+            print("[WARNING] Data collection pipeline not available")
+
+        # Feedback state
+        self.pending_feedback_request = None
+        self.last_command_result = None
+
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -99,6 +133,11 @@ class VoiceAssistant:
         """Handle command text, only if assistant is active."""
         if not self.is_active:
             return  # Ignore commands when not active
+
+        # Check if this is feedback response
+        if self.pending_feedback_request:
+            self._handle_feedback_response(text)
+            return
 
         # Reset activation timer on each command to keep conversation going
         self.last_activation = datetime.now()
@@ -250,12 +289,14 @@ class VoiceAssistant:
     def _handle_debug_command(self):
         """Handle debug commands from keyboard."""
         import msvcrt
-        
+
         key = msvcrt.getch()
         if key == b's':  # Show status
             self._show_status()
         elif key == b'r':  # Recognition stats
             self._show_recognition_stats()
+        elif key == b'f':  # Show feedback stats
+            self._show_feedback_stats()
         elif key == b'q':  # Quit
             self.shutdown()
 
@@ -272,11 +313,22 @@ class VoiceAssistant:
         print(f"Commands: {self.session_stats['commands_executed']}")
         print(f"Success Rate: {self._get_success_rate():.1%}")
 
+        # Show dialogue state information
+        if hasattr(self, 'dialogue_tracker') and self.dialogue_tracker:
+            dialogue_stats = self.dialogue_tracker.get_session_stats()
+            print(f"\nDialogue State:")
+            print(f"  Session ID: {dialogue_stats['session_id']}")
+            print(f"  Conversation Turns: {dialogue_stats['total_turns']}")
+            print(f"  Session Duration: {dialogue_stats['session_duration']:.1f}s")
+            print(f"  Success Rate: {dialogue_stats['success_rate']:.1%}")
+            print(f"  Last Activity: {time.time() - dialogue_stats['last_activity']:.1f}s ago")
+
         # Show component status
         print(f"\nComponents:")
         print(f"  TTS: {'✓' if self.tts.engine else '✗'}")
         print(f"  Speech: {'✓' if self.recognizer.is_listening else '✗'}")
         print(f"  Actions: {'✓' if self.actions else '✗'}")
+        print(f"  Dialogue Tracker: {'✓' if hasattr(self, 'dialogue_tracker') and self.dialogue_tracker else '✗'}")
 
     def _show_recognition_stats(self):
         """Show speech recognition statistics."""
@@ -302,6 +354,149 @@ class VoiceAssistant:
             return 0.0
         return self.session_stats['successful_commands'] / total
 
+    def _handle_feedback_response(self, text: str):
+        """Handle user response to feedback request."""
+        if not self.pending_feedback_request or not self.last_command_result:
+            return
+
+        feedback_type = self.pending_feedback_request.get('type')
+        original_result = self.last_command_result
+
+        try:
+            # Parse feedback response
+            text_lower = text.lower().strip()
+
+            # Handle rating responses (1-5)
+            if text_lower in ['1', '2', '3', '4', '5']:
+                rating = Rating(int(text_lower))
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.GENERAL_RATING,
+                    original_input=original_result.get('input', ''),
+                    original_intent=original_result.get('intent', ''),
+                    original_entities=original_result.get('entities', {}),
+                    original_confidence=original_result.get('confidence', 0.0),
+                    user_rating=rating,
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.feedback_collector.add_feedback(feedback_entry)
+                self.tts.say("Thank you for the feedback!", sync=False)
+
+            # Handle correction responses
+            elif 'correction' in self.pending_feedback_request.get('context', {}):
+                # User is providing a correction
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.INTENT_CORRECTION,
+                    original_input=original_result.get('input', ''),
+                    original_intent=original_result.get('intent', ''),
+                    original_entities=original_result.get('entities', {}),
+                    original_confidence=original_result.get('confidence', 0.0),
+                    user_correction=text,
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.feedback_collector.add_feedback(feedback_entry)
+                self.tts.say("Got it, I'll learn from that correction.", sync=False)
+
+            # Handle yes/no confirmation
+            elif text_lower in ['yes', 'y', 'correct', 'right']:
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.COMMAND_SUCCESS,
+                    original_input=original_result.get('input', ''),
+                    original_intent=original_result.get('intent', ''),
+                    original_entities=original_result.get('entities', {}),
+                    original_confidence=original_result.get('confidence', 0.0),
+                    user_rating=Rating.VERY_GOOD,
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.feedback_collector.add_feedback(feedback_entry)
+                self.tts.say("Great! Glad I got that right.", sync=False)
+
+            elif text_lower in ['no', 'n', 'wrong', 'incorrect']:
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.COMMAND_FAILURE,
+                    original_input=original_result.get('input', ''),
+                    original_intent=original_result.get('intent', ''),
+                    original_entities=original_result.get('entities', {}),
+                    original_confidence=original_result.get('confidence', 0.0),
+                    user_rating=Rating.BAD,
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.feedback_collector.add_feedback(feedback_entry)
+                self.tts.say("Sorry about that. What should I have done instead?", sync=False)
+                # Could set up for correction input here
+
+            else:
+                # Generic feedback
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.GENERAL_RATING,
+                    original_input=original_result.get('input', ''),
+                    original_intent=original_result.get('intent', ''),
+                    original_entities=original_result.get('entities', {}),
+                    original_confidence=original_result.get('confidence', 0.0),
+                    user_comment=text,
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.feedback_collector.add_feedback(feedback_entry)
+                self.tts.say("Thanks for letting me know!", sync=False)
+
+        except Exception as e:
+            print(f"[ERROR] Failed to process feedback response: {e}")
+            self.tts.say("I didn't catch that feedback. Let's continue.", sync=False)
+
+        # Clear pending feedback
+        self.pending_feedback_request = None
+        self.last_command_result = None
+
+    def _request_feedback(self, command_result: dict):
+        """Request feedback from user about a command."""
+        if not self.feedback_collector.should_request_feedback(command_result):
+            return
+
+        # Store for later processing
+        self.last_command_result = command_result
+        self.pending_feedback_request = {
+            'type': 'rating',
+            'timestamp': time.time(),
+            'context': command_result
+        }
+
+        # Ask for feedback
+        feedback_message = self.feedback_collector.create_feedback_request(command_result)
+        self.tts.say(feedback_message, sync=False)
+
+        # Set a timeout for feedback response (30 seconds)
+        def clear_feedback_request():
+            time.sleep(30)
+            if self.pending_feedback_request:
+                self.pending_feedback_request = None
+                self.last_command_result = None
+
+        import threading
+        threading.Thread(target=clear_feedback_request, daemon=True).start()
+
+    def _show_feedback_stats(self):
+        """Show feedback statistics."""
+        stats = self.feedback_collector.get_feedback_stats()
+
+        print(f"\n{'='*40}")
+        print("FEEDBACK STATISTICS")
+        print(f"{'='*40}")
+        print(f"Total feedback entries: {stats['total_feedback']}")
+        print(f"Average rating: {stats.get('average_rating', 'N/A')}")
+        print("\nFeedback by type:")
+        for fb_type, count in stats['feedback_by_type'].items():
+            print(f"  {fb_type}: {count}")
+
+        if stats.get('rating_distribution'):
+            print("\nRating distribution:")
+            for rating in Rating:
+                count = stats['rating_distribution'].get(rating.value, 0)
+                print(f"  {rating.value} stars: {count}")
+
     def shutdown(self):
         """Gracefully shutdown the assistant."""
         print(f"\n{'='*60}")
@@ -313,16 +508,24 @@ class VoiceAssistant:
         # Stop speech recognition
         if self.recognizer:
             self.recognizer.stop()
-        
+
+        # Stop data collection pipeline
+        if hasattr(self, 'data_pipeline') and self.data_pipeline:
+            try:
+                self.data_pipeline.stop_pipeline()
+                print("[INFO] Data collection pipeline stopped")
+            except Exception as e:
+                print(f"[WARNING] Error stopping data pipeline: {e}")
+
         # Show final statistics
         self._show_final_stats()
-        
+
         # Say goodbye
         try:
             self.tts.say("JARVIS systems offline. Goodbye.", sync=True)
         except:
             pass
-        
+
         print("Assistant shutdown complete")
 
     def _show_final_stats(self):

@@ -24,12 +24,56 @@
     "vosk_model_path": null,
     "noise_reduction": true,
     "energy_threshold": 300,
-    "dynamic_energy_threshold": true
+    "dynamic_energy_threshold": true,
+    "ml_asr": {
+      "enabled": true,
+      "model": "whisper",
+      "model_size": "base",
+      "offline": true,
+      "device": "cpu",
+      "language": null,
+      "fine_tune_data_path": null
+    }
   },
   "newsapi": {
     "api_key": "YOUR_NEWSAPI_KEY_HERE"
   },
   "elevenlabs": {
     "api_key": "sk_1bf3ecb29a51fd9b5eaf662f707ffa548937dd8337e6a180"
+  },
+  "dialogue_state": {
+    "enabled": true,
+    "max_history": 50,
+    "session_timeout": 1800,
+    "persistence": {
+      "user_preferences": true,
+      "conversation_history": true
+    }
+  },
+  "text_correction": {
+    "enabled": true,
+    "ml_correction": {
+      "enabled": true,
+      "model_type": "t5",
+      "model_name": "t5-small",
+      "device": "cpu",
+      "max_length": 128,
+      "domain_fine_tuning": {
+        "enabled": true,
+        "voice_assistant_model": "t5-base-voice-assistant",
+        "asr_error_model": "t5-base-asr-correction"
+      }
+    },
+    "hybrid_system": {
+      "ml_first": true,
+      "fallback_to_rules": true,
+      "combine_scores": true,
+      "ml_weight": 0.7,
+      "rules_weight": 0.3
+    },
+    "max_edit_distance": 2,
+    "min_confidence_threshold": 0.6,
+    "domain_specific_enabled": true,
+    "learning_enabled": true
   }
 }

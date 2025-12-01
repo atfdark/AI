@@ -18,5 +18,10 @@ psutil
 pypiwin32
 comtypes
 pyttsx3
+spacy
+nltk
+scikit-learn
 # Optional / advanced
-# openai-whisper
+openai-whisper
+torch
+transformers

@@ -1,0 +1,23 @@
+{
+  "entries": [
+    {
+      "timestamp": 1764599711.651739,
+      "feedback_type": "command_success",
+      "original_input": "open chrome",
+      "original_intent": "open_application",
+      "original_entities": {
+        "application": "chrome"
+      },
+      "original_confidence": 0.9,
+      "user_rating": 5
+    },
+    {
+      "timestamp": 1764596111.6517425,
+      "feedback_type": "intent_correction",
+      "original_input": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "original_confidence": 0.8
+    }
+  ]
+}

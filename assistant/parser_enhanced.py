@@ -6,6 +6,48 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 
+# Import custom NER
+try:
+    import ner_custom
+    get_ner = ner_custom.get_ner
+    NER_AVAILABLE = True
+except ImportError:
+    try:
+        from . import ner_custom
+        get_ner = ner_custom.get_ner
+        NER_AVAILABLE = True
+    except ImportError:
+        NER_AVAILABLE = False
+        print("[WARNING] Custom NER not available, using regex-only extraction")
+
+# Import ML Intent Classifier and Ensemble Classifier
+try:
+    import intent_classifier
+    ML_CLASSIFIER_AVAILABLE = True
+    print("[PARSER] ML Intent Classifier available")
+except ImportError:
+    try:
+        from . import intent_classifier
+        ML_CLASSIFIER_AVAILABLE = True
+        print("[PARSER] ML Intent Classifier available")
+    except ImportError:
+        ML_CLASSIFIER_AVAILABLE = False
+        print("[WARNING] ML Intent Classifier not available, using regex-only classification")
+
+# Import Ensemble Intent Classifier
+try:
+    import ensemble_intent_classifier
+    ENSEMBLE_AVAILABLE = True
+    print("[PARSER] Ensemble Intent Classifier available")
+except ImportError:
+    try:
+        from . import ensemble_intent_classifier
+        ENSEMBLE_AVAILABLE = True
+        print("[PARSER] Ensemble Intent Classifier available")
+    except ImportError:
+        ENSEMBLE_AVAILABLE = False
+        print("[WARNING] Ensemble Intent Classifier not available, using traditional approach")
+
 
 class Intent(Enum):
     """Enumeration of possible command intents."""
@@ -55,10 +97,12 @@ class CommandResult:
 class EnhancedCommandParser:
     """Enhanced command parser with intent recognition and natural language understanding."""
     
-    def __init__(self, actions, tts, config_path: str = None):
+    def __init__(self, actions, tts, config_path: str = None, dialogue_tracker=None, feedback_callback=None):
         self.actions = actions
         self.tts = tts
         self.mode = 'command'  # 'command' or 'dictation'
+        self.dialogue_tracker = dialogue_tracker
+        self.feedback_callback = feedback_callback  # Callback to request feedback
 
         # Load configuration
         self.config_path = config_path or os.path.join(
@@ -81,6 +125,85 @@ class EnhancedCommandParser:
 
         # Learning data for personalization
         self.learning_data = self._load_learning_data()
+
+        # Initialize NER for enhanced parameter extraction with optimizations
+        self.ner = None
+        if NER_AVAILABLE:
+            try:
+                self.ner = get_ner(enable_optimization=True)
+                # Enable caching for NER
+                if hasattr(self.ner, 'enable_caching'):
+                    self.ner.enable_caching(max_size=500, ttl_seconds=600)
+                print("[PARSER] NER initialized for enhanced parameter extraction with optimizations")
+            except Exception as e:
+                print(f"[WARNING] Failed to initialize NER: {e}")
+                self.ner = None
+
+        # Initialize Ensemble Intent Classifier with optimizations
+        self.ensemble_classifier = None
+        if ENSEMBLE_AVAILABLE:
+            try:
+                # Create ML classifier instance with optimizations enabled
+                ml_classifier = None
+                if ML_CLASSIFIER_AVAILABLE:
+                    ml_classifier = intent_classifier.IntentClassifier(enable_optimization=True)
+                    if not ml_classifier.load_model():
+                        print("[WARNING] Failed to load ML model for ensemble")
+                        ml_classifier = None
+                    else:
+                        # Enable caching for the ML classifier
+                        ml_classifier.enable_caching(max_size=500, ttl_seconds=600)
+
+                # Create ensemble with regex patterns and ML classifier
+                from ensemble_intent_classifier import EnsembleConfig
+                config = EnsembleConfig(
+                    voting_method=ensemble_intent_classifier.VotingMethod.CONFIDENCE_WEIGHTED,
+                    confidence_threshold=0.6,
+                    enable_ml=ml_classifier is not None,
+                    enable_regex=True,
+                    enable_keyword=True,
+                    # Enable confidence calibration and adaptive thresholding
+                    enable_calibration=True,
+                    calibration_method='platt_scaling',
+                    adaptive_thresholding=True,
+                    threshold_method='f1',
+                    calibration_model_path='models/confidence_calibrator.pkl'
+                )
+
+                self.ensemble_classifier = ensemble_intent_classifier.EnsembleIntentClassifier(
+                    config=config,
+                    ml_classifier=ml_classifier
+                )
+
+                # Set regex patterns from command patterns
+                regex_patterns = {}
+                for intent, patterns in self.command_patterns.items():
+                    # Convert Intent enum to string for ensemble
+                    intent_str = intent.value
+                    regex_patterns[intent_str] = patterns
+
+                self.ensemble_classifier.set_regex_patterns(regex_patterns)
+
+                print("[PARSER] Ensemble Intent Classifier initialized successfully with optimizations")
+                print(f"[PARSER] Ensemble components: ML={config.enable_ml}, Regex={config.enable_regex}, Keyword={config.enable_keyword}")
+
+            except Exception as e:
+                print(f"[WARNING] Failed to initialize Ensemble Intent Classifier: {e}")
+                self.ensemble_classifier = None
+
+        # Fallback: Initialize traditional ML classifier if ensemble fails
+        self.ml_classifier = None
+        if not self.ensemble_classifier and ML_CLASSIFIER_AVAILABLE:
+            try:
+                self.ml_classifier = intent_classifier.IntentClassifier()
+                if self.ml_classifier.load_model():
+                    print("[PARSER] ML Intent Classifier loaded as fallback")
+                else:
+                    print("[WARNING] Failed to load ML Intent Classifier model")
+                    self.ml_classifier = None
+            except Exception as e:
+                print(f"[WARNING] Failed to initialize ML Intent Classifier: {e}")
+                self.ml_classifier = None
 
         # Statistics
         self.stats = {
@@ -166,7 +289,7 @@ class EnhancedCommandParser:
 
         patterns.update({
             Intent.VOLUME_CONTROL: [
-                (r'\b(volume|turn|increase|decrease)\s+(?:the\s+)?(?:volume|sound)\s*(?:up|down|higher|lower)?$', 0.9),
+                (r'\b(volume|turn|increase|decrease)\s+(?:the\s+)?(?:volume|sound)?\s*(?:up|down|higher|lower|mute)?$', 0.9),
                 (r'\b(make\s+it|turn\s+it)\s+(?:louder|quieter|higher|lower)$', 0.7),
                 (r'\b(mute|unmute|silence)\s*(?:the\s+)?(?:volume|sound|computer)?$', 0.85),
             ],
@@ -469,6 +592,19 @@ class EnhancedCommandParser:
             ],
         })
 
+        # Add feedback-related patterns
+        patterns.update({
+            Intent.UNKNOWN: [
+                # Feedback commands - these will be handled specially
+                (r'\b(?:rate|rating|score)\s*(?:it|that|this)?\s*(\d+)\s*(?:out\s+of\s+\d+)?$', 0.9),
+                (r'\b(good\s+job|well\s+done|nice\s+work|excellent|great)\s*(?:assistant|jarvis)?$', 0.8),
+                (r'\b(that\'s\s+)?(?:wrong|incorrect|bad|terrible|awful)\s*(?:assistant|jarvis)?$', 0.8),
+                (r'\b(i\s+meant|you\s+should\s+have|try)\s+(.+?)$', 0.7),
+                (r'\b(correct|right|yes|that\'s\s+right)\s*(?:assistant|jarvis)?$', 0.8),
+                (r'\b(thanks?|thank\s+you)\s*(?:assistant|jarvis)?$', 0.6),
+            ],
+        })
+
         if 'hi' in self.supported_languages:
             patterns[Intent.TODO_MANAGEMENT].extend([
                 (r'\b(दिखाओ|लिस्ट|डिस्प्ले|गेट)\s+(?:मेरी\s+)?(?:टूडू|टू-डू|टास्क)\s+लिस्ट.?$', 0.9),
@@ -503,7 +639,7 @@ class EnhancedCommandParser:
     def parse_intent(self, text: str) -> CommandResult:
         """Parse text to determine intent and extract parameters."""
         text = text.strip().lower()
-        
+
         # Check mode switching first
         if 'start dictation' in text or 'begin dictation' in text:
             return CommandResult(
@@ -512,7 +648,7 @@ class EnhancedCommandParser:
                 action="start_dictation",
                 parameters={}
             )
-        
+
         if 'stop dictation' in text or 'end dictation' in text:
             return CommandResult(
                 intent=Intent.SWITCH_MODE,
@@ -520,7 +656,7 @@ class EnhancedCommandParser:
                 action="stop_dictation",
                 parameters={}
             )
-        
+
         # Dictation mode
         if self.mode == 'dictation':
             return CommandResult(
@@ -529,29 +665,133 @@ class EnhancedCommandParser:
                 action="type_text",
                 parameters={'text': text}
             )
-        
-        # Intent recognition for command mode
+
+        # Try Ensemble classifier first if available
+        if self.ensemble_classifier:
+            try:
+                ensemble_intent_str, ensemble_confidence, ensemble_probabilities = self.ensemble_classifier.predict(text)
+
+                # Convert string intent to Intent enum
+                try:
+                    ensemble_intent = Intent(ensemble_intent_str)
+                except ValueError:
+                    # If ensemble returns unknown intent, fall back to traditional approach
+                    ensemble_intent = None
+
+                if ensemble_intent:
+                    print(f"[ENSEMBLE] Classified as {ensemble_intent.value} with confidence {ensemble_confidence:.2f}")
+
+                    # Extract parameters using regex patterns (ensemble handles intent, regex handles parameters)
+                    parameters = self._extract_parameters_from_text(ensemble_intent, text)
+
+                    # Apply dialogue context if available
+                    if self.dialogue_tracker:
+                        enhanced_intent, enhanced_parameters = self.dialogue_tracker.get_context_aware_intent(
+                            text, ensemble_intent.value, parameters
+                        )
+                        # Convert back to Intent enum if it was changed
+                        if enhanced_intent != ensemble_intent.value:
+                            try:
+                                enhanced_intent = Intent(enhanced_intent)
+                            except ValueError:
+                                enhanced_intent = ensemble_intent  # Keep original if conversion fails
+                        parameters = enhanced_parameters
+
+                    return CommandResult(
+                        intent=ensemble_intent,
+                        confidence=ensemble_confidence,
+                        action=ensemble_intent.value,
+                        parameters=parameters
+                    )
+                else:
+                    print("[ENSEMBLE] Unknown intent returned, falling back to traditional approach")
+
+            except Exception as e:
+                print(f"[WARNING] Ensemble classification failed: {e}, falling back to traditional approach")
+
+        # Fallback to traditional ML + regex approach
+        print("[TRADITIONAL] Using traditional ML + regex classification")
+
+        # Try ML classifier first if available
+        if self.ml_classifier and self.ml_classifier.is_trained:
+            try:
+                ml_intent_str, ml_confidence, ml_probabilities = self.ml_classifier.predict(text)
+
+                # Convert string intent to Intent enum
+                try:
+                    ml_intent = Intent(ml_intent_str)
+                except ValueError:
+                    # If ML classifier returns unknown intent, fall back to regex
+                    ml_intent = None
+
+                # Use ML result if confidence is high enough (>= 0.7)
+                if ml_intent and ml_confidence >= 0.7:
+                    print(f"[ML] Classified as {ml_intent.value} with confidence {ml_confidence:.2f}")
+
+                    # Extract parameters using regex patterns (ML handles intent, regex handles parameters)
+                    parameters = self._extract_parameters_from_text(ml_intent, text)
+
+                    # Apply dialogue context if available
+                    if self.dialogue_tracker:
+                        enhanced_intent, enhanced_parameters = self.dialogue_tracker.get_context_aware_intent(
+                            text, ml_intent.value, parameters
+                        )
+                        # Convert back to Intent enum if it was changed
+                        if enhanced_intent != ml_intent.value:
+                            try:
+                                enhanced_intent = Intent(enhanced_intent)
+                            except ValueError:
+                                enhanced_intent = ml_intent  # Keep original if conversion fails
+                        parameters = enhanced_parameters
+
+                    return CommandResult(
+                        intent=ml_intent,
+                        confidence=ml_confidence,
+                        action=ml_intent.value,
+                        parameters=parameters
+                    )
+                else:
+                    print(f"[ML] Low confidence ({ml_confidence:.2f}) or unknown intent, falling back to regex")
+
+            except Exception as e:
+                print(f"[WARNING] ML classification failed: {e}, falling back to regex")
+
+        # Fallback to regex-based classification
+        print("[REGEX] Using regex-based intent classification")
         best_match = None
         best_confidence = 0.0
-        
+
         for intent, patterns in self.command_patterns.items():
             for pattern, confidence in patterns:
                 match = re.search(pattern, text, re.IGNORECASE)
                 if match and confidence > best_confidence:
                     best_match = (intent, match, confidence)
                     best_confidence = confidence
-        
+
         if best_match:
             intent, match, confidence = best_match
             parameters = self._extract_parameters(intent, match, text)
-            
+
+            # Apply dialogue context if available
+            if self.dialogue_tracker:
+                enhanced_intent, enhanced_parameters = self.dialogue_tracker.get_context_aware_intent(
+                    text, intent.value, parameters
+                )
+                # Convert back to Intent enum if it was changed
+                if enhanced_intent != intent.value:
+                    try:
+                        enhanced_intent = Intent(enhanced_intent)
+                    except ValueError:
+                        enhanced_intent = intent  # Keep original if conversion fails
+                parameters = enhanced_parameters
+
             return CommandResult(
                 intent=intent,
                 confidence=confidence,
                 action=intent.value,
                 parameters=parameters
             )
-        
+
         # Fallback to simple keyword matching for backward compatibility
         return self._fallback_parse(text)
 
@@ -884,6 +1124,42 @@ class EnhancedCommandParser:
                 if match and len(match.groups()) >= 2:
                     parameters['voice_id'] = match.group(2).strip()
 
+        # NER fallback for enhanced parameter extraction
+        if self.ner and self.ner.is_trained:
+            ner_params = self.ner.extract_parameters(text, intent.value if intent else None)
+            # Only add NER parameters if regex didn't find them
+            for key, value in ner_params.items():
+                if key not in parameters and value:
+                    parameters[key] = value
+                    print(f"[NER] Enhanced parameter extraction: {key} = {value}")
+
+        return parameters
+
+    def _extract_parameters_from_text(self, intent: Intent, text: str) -> Dict[str, any]:
+        """Extract parameters from text for a given intent (used with ML classifier)."""
+        parameters = {}
+
+        # Use regex patterns to extract parameters, but match against the intent
+        for pattern_intent, patterns in self.command_patterns.items():
+            if pattern_intent == intent:
+                for pattern, confidence in patterns:
+                    match = re.search(pattern, text, re.IGNORECASE)
+                    if match:
+                        # Use the existing parameter extraction logic
+                        params = self._extract_parameters(intent, match, text)
+                        parameters.update(params)
+                        break  # Use first matching pattern
+                break
+
+        # NER fallback for enhanced parameter extraction
+        if self.ner and self.ner.is_trained:
+            ner_params = self.ner.extract_parameters(text, intent.value if intent else None)
+            # Only add NER parameters if regex didn't find them
+            for key, value in ner_params.items():
+                if key not in parameters and value:
+                    parameters[key] = value
+                    print(f"[NER] Enhanced parameter extraction: {key} = {value}")
+
         return parameters
 
     def _extract_tasks_from_text(self, text: str) -> List[str]:
@@ -956,14 +1232,106 @@ class EnhancedCommandParser:
         )
 
     def handle_text(self, text: str):
-        """Main text processing handler."""
+        """Main text processing handler with comprehensive data collection."""
         self.stats['commands_processed'] += 1
+        command_start_time = time.time()
+
+        # Enhanced interaction tracking
+        interaction_data = {
+            'timestamp': command_start_time,
+            'user_input': text,
+            'input_length': len(text),
+            'input_type': self._classify_input_type(text),
+            'mode': self.mode,
+            'session_context': self._get_session_context()
+        }
 
         # Parse the intent
         result = self.parse_intent(text)
 
         # Execute the command
         success = self.execute_command(result)
+
+        # Calculate processing time
+        processing_time = time.time() - command_start_time
+
+        # Generate response text for tracking
+        response_text = self._get_response_text(result, success)
+
+        # Enhanced interaction data
+        interaction_data.update({
+            'intent': result.intent.value,
+            'confidence': result.confidence,
+            'entities': result.parameters,
+            'entity_count': len(result.parameters),
+            'processing_time': processing_time,
+            'success': success,
+            'response': response_text,
+            'response_length': len(response_text),
+            'command_category': self._categorize_command(result.intent),
+            'complexity_score': self._calculate_complexity_score(text, result.parameters)
+        })
+
+        # Track conversation if dialogue tracker is available
+        if self.dialogue_tracker:
+            self.dialogue_tracker.add_turn(
+                user_input=text,
+                intent=result.intent.value,
+                confidence=result.confidence,
+                entities=result.parameters,
+                response=response_text,
+                success=success
+            )
+
+        # Record performance metrics
+        try:
+            from .performance_monitor import record_command_performance
+            record_command_performance(
+                command=text,
+                intent=result.intent.value,
+                confidence=result.confidence,
+                processing_time=processing_time,
+                success=success
+            )
+        except ImportError:
+            pass  # Performance monitoring not available
+
+        # Enhanced usage analytics tracking
+        try:
+            from .usage_analytics import get_usage_tracker
+            usage_tracker = get_usage_tracker()
+
+            # Track detailed interaction
+            usage_tracker.track_interaction(
+                interaction_type='command_execution',
+                component='parser',
+                details={
+                    'command': text,
+                    'intent': result.intent.value,
+                    'confidence': result.confidence,
+                    'entities': result.parameters,
+                    'processing_time': processing_time,
+                    'success': success,
+                    'input_type': interaction_data['input_type'],
+                    'command_category': interaction_data['command_category'],
+                    'complexity_score': interaction_data['complexity_score']
+                },
+                success=success
+            )
+
+            # Track feature usage
+            usage_tracker.track_feature_usage(
+                result.intent.value,
+                {
+                    'confidence': result.confidence,
+                    'entity_count': len(result.parameters),
+                    'processing_time': processing_time,
+                    'success': success
+                }
+            )
+
+        except ImportError:
+            pass  # Usage analytics not available
 
         # Update statistics
         if success:
@@ -980,8 +1348,65 @@ class EnhancedCommandParser:
         if success:
             self.stats['intent_accuracy'][intent_str]['correct'] += 1
 
+        # Data collection pipeline integration
+        try:
+            from .data_collection_pipeline import get_data_pipeline
+            pipeline = get_data_pipeline()
+
+            # Collect interaction data for pipeline processing
+            pipeline.learning_engine._collect_interaction_data(interaction_data)
+
+        except ImportError:
+            pass  # Data pipeline not available
+
+        # Request feedback if callback is available
+        if self.feedback_callback:
+            command_result = {
+                'input': text,
+                'intent': result.intent.value,
+                'entities': result.parameters,
+                'confidence': result.confidence,
+                'success': success,
+                'response': response_text,
+                'processing_time': processing_time,
+                'interaction_data': interaction_data
+            }
+            self.feedback_callback(command_result)
+
+    def _get_response_text(self, result: CommandResult, success: bool) -> str:
+        """Generate response text for conversation tracking."""
+        if success:
+            # Try to extract response from TTS or generate a generic one
+            if result.intent == Intent.SWITCH_MODE:
+                if result.action == "start_dictation":
+                    return "Dictation started"
+                elif result.action == "stop_dictation":
+                    return "Dictation stopped"
+            elif result.intent == Intent.OPEN_APPLICATION:
+                app = result.parameters.get('application', 'application')
+                return f"Opening {app}"
+            elif result.intent == Intent.SEARCH:
+                query = result.parameters.get('query', 'query')
+                return f"Searching for {query}"
+            elif result.intent == Intent.WIKIPEDIA:
+                topic = result.parameters.get('topic', 'topic')
+                return f"Looking up {topic} on Wikipedia"
+            elif result.intent == Intent.WEATHER:
+                location = result.parameters.get('location', 'location')
+                return f"Getting weather for {location}"
+            else:
+                return f"Executed {result.intent.value}"
+        else:
+            return f"Failed to execute {result.intent.value}"
+
     def execute_command(self, result: CommandResult) -> bool:
         """Execute the parsed command."""
+        # Import usage analytics
+        try:
+            from .usage_analytics import track_command
+        except ImportError:
+            track_command = None
+
         try:
             if result.intent == Intent.SWITCH_MODE:
                 return self._handle_mode_switch(result)
@@ -1067,6 +1492,21 @@ class EnhancedCommandParser:
             elif result.intent == Intent.TTS_CONTROL:
                 return self._handle_tts_control(result)
 
+            elif result.intent == Intent.UNKNOWN:
+                # Check if this might be feedback
+                if self._handle_potential_feedback(result.parameters.get('text', '')):
+                    return True  # Handled as feedback
+                else:
+                    responses = [
+                        "Sorry, I didn't understand that command",
+                        "I didn't catch that",
+                        "Could you repeat that?",
+                        "I'm not sure what you mean"
+                    ]
+                    import random
+                    self.tts.say(random.choice(responses))
+                    time.sleep(1)  # Prevent microphone from capturing TTS output
+                    return False
             else:
                 responses = [
                     "Sorry, I didn't understand that command",
@@ -1083,7 +1523,18 @@ class EnhancedCommandParser:
             print(f"[ERROR] Command execution failed: {e}")
             self.tts.say("Sorry, there was an error executing that command")
             time.sleep(1)  # Prevent microphone from capturing TTS output
+
+            # Track failed command
+            if track_command:
+                track_command(result.parameters.get('text', ''), result.intent.value, result.confidence, 0.0, False)
+
             return False
+
+        # Track successful command execution
+        if track_command:
+            import time as time_module
+            execution_time = time_module.time() - time_module.time()  # This is approximate, would need better timing
+            track_command(result.parameters.get('text', ''), result.intent.value, result.confidence, execution_time, True)
 
     def _handle_mode_switch(self, result: CommandResult) -> bool:
         """Handle mode switching commands."""
@@ -2110,6 +2561,123 @@ class EnhancedCommandParser:
             time.sleep(1)
             return False
 
+    def _handle_potential_feedback(self, text: str) -> bool:
+        """Check if text contains feedback and handle it."""
+        text_lower = text.lower().strip()
+        feedback_handled = False
+
+        # Import feedback types here to avoid circular imports
+        from .feedback_system import FeedbackType, Rating, FeedbackEntry
+
+        try:
+            # Handle rating commands
+            import re
+            rating_match = re.search(r'(?:rate|rating|score)\s*(?:it|that|this)?\s*(\d+)', text_lower)
+            if rating_match:
+                rating_value = int(rating_match.group(1))
+                if 1 <= rating_value <= 5:
+                    # Create feedback entry for the last command
+                    feedback_entry = FeedbackEntry(
+                        timestamp=time.time(),
+                        feedback_type=FeedbackType.GENERAL_RATING,
+                        original_input="",  # Will be filled by context
+                        original_intent="",
+                        original_entities={},
+                        original_confidence=0.0,
+                        user_rating=Rating(rating_value),
+                        user_comment=f"Voice rating: {rating_value}",
+                        session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                    )
+                    self.tts.say(f"Thank you for rating me {rating_value} out of 5!", sync=False)
+                    feedback_handled = True
+
+            # Handle positive feedback
+            elif any(phrase in text_lower for phrase in ['good job', 'well done', 'nice work', 'excellent', 'great']):
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.GENERAL_RATING,
+                    original_input="",
+                    original_intent="",
+                    original_entities={},
+                    original_confidence=0.0,
+                    user_rating=Rating.VERY_GOOD,
+                    user_comment="Positive feedback",
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.tts.say("Thank you! I'm glad I could help.", sync=False)
+                feedback_handled = True
+
+            # Handle negative feedback
+            elif any(phrase in text_lower for phrase in ['wrong', 'incorrect', 'bad', 'terrible', 'awful']):
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.COMMAND_FAILURE,
+                    original_input="",
+                    original_intent="",
+                    original_entities={},
+                    original_confidence=0.0,
+                    user_rating=Rating.BAD,
+                    user_comment="Negative feedback",
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.tts.say("I'm sorry I got that wrong. I'll try to do better next time.", sync=False)
+                feedback_handled = True
+
+            # Handle correction attempts
+            elif any(phrase in text_lower for phrase in ['i meant', 'you should have', 'try']):
+                correction_match = re.search(r'(?:i meant|you should have|try)\s+(.+)', text_lower)
+                if correction_match:
+                    correction = correction_match.group(1).strip()
+                    feedback_entry = FeedbackEntry(
+                        timestamp=time.time(),
+                        feedback_type=FeedbackType.INTENT_CORRECTION,
+                        original_input="",
+                        original_intent="",
+                        original_entities={},
+                        original_confidence=0.0,
+                        user_correction=correction,
+                        session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                    )
+                    self.tts.say("Got it, I'll remember that for next time.", sync=False)
+                    feedback_handled = True
+
+            # Handle confirmation
+            elif any(phrase in text_lower for phrase in ['correct', 'right', 'yes', 'that\'s right']):
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.COMMAND_SUCCESS,
+                    original_input="",
+                    original_intent="",
+                    original_entities={},
+                    original_confidence=0.0,
+                    user_rating=Rating.GOOD,
+                    user_comment="Confirmation",
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.tts.say("Great! Glad I understood correctly.", sync=False)
+                feedback_handled = True
+
+            # Handle thanks
+            elif any(phrase in text_lower for phrase in ['thanks', 'thank you']):
+                feedback_entry = FeedbackEntry(
+                    timestamp=time.time(),
+                    feedback_type=FeedbackType.GENERAL_RATING,
+                    original_input="",
+                    original_intent="",
+                    original_entities={},
+                    original_confidence=0.0,
+                    user_rating=Rating.GOOD,
+                    user_comment="Thanks",
+                    session_id=getattr(self.dialogue_tracker, 'session_id', None) if self.dialogue_tracker else None
+                )
+                self.tts.say("You're welcome!", sync=False)
+                feedback_handled = True
+
+        except Exception as e:
+            print(f"[ERROR] Failed to handle feedback: {e}")
+
+        return feedback_handled
+
     def get_stats(self) -> dict:
         """Get parser statistics."""
         return self.stats.copy()
@@ -2117,6 +2685,148 @@ class EnhancedCommandParser:
     def get_learning_data(self) -> dict:
         """Get user learning data."""
         return self.learning_data.copy()
+
+    def _classify_input_type(self, text: str) -> str:
+        """Classify the type of user input."""
+        text_lower = text.lower().strip()
+
+        # Check for dictation mode indicators
+        if len(text) > 50 and not any(keyword in text_lower for keyword in
+                                     ['open', 'close', 'search', 'play', 'volume', 'take']):
+            return 'dictation'
+
+        # Check for command patterns
+        if any(text_lower.startswith(word) for word in
+               ['open', 'close', 'search', 'play', 'volume', 'take', 'show', 'get', 'set']):
+            return 'command'
+
+        # Check for questions
+        if any(text_lower.startswith(word) for word in
+               ['what', 'how', 'when', 'where', 'why', 'who', 'can you', 'tell me']):
+            return 'question'
+
+        # Check for feedback
+        if any(word in text_lower for word in
+               ['good', 'bad', 'thanks', 'thank you', 'correct', 'wrong', 'rate', 'rating']):
+            return 'feedback'
+
+        return 'command'  # Default
+
+    def _get_session_context(self) -> Dict[str, Any]:
+        """Get current session context information."""
+        context = {
+            'mode': self.mode,
+            'commands_processed': self.stats['commands_processed'],
+            'success_rate': self._calculate_success_rate()
+        }
+
+        # Add dialogue context if available
+        if self.dialogue_tracker:
+            try:
+                dialogue_stats = self.dialogue_tracker.get_session_stats()
+                context.update({
+                    'session_id': dialogue_stats.get('session_id'),
+                    'conversation_turns': dialogue_stats.get('total_turns', 0),
+                    'session_duration': dialogue_stats.get('session_duration', 0)
+                })
+            except:
+                pass
+
+        return context
+
+    def _categorize_command(self, intent: Intent) -> str:
+        """Categorize command by type."""
+        categories = {
+            # Application control
+            Intent.OPEN_APPLICATION: 'application_control',
+            Intent.CLOSE_WINDOW: 'application_control',
+
+            # System control
+            Intent.SYSTEM_CONTROL: 'system_control',
+            Intent.VOLUME_CONTROL: 'system_control',
+            Intent.SCREENSHOT: 'system_control',
+
+            # Information retrieval
+            Intent.SEARCH: 'information_retrieval',
+            Intent.WIKIPEDIA: 'information_retrieval',
+            Intent.WEATHER: 'information_retrieval',
+            Intent.NEWS_REPORTING: 'information_retrieval',
+
+            # Web browsing
+            Intent.WEB_BROWSING: 'web_browsing',
+            Intent.YOUTUBE: 'web_browsing',
+
+            # Productivity
+            Intent.TEXT_OPERATION: 'productivity',
+            Intent.TODO_GENERATION: 'productivity',
+            Intent.TODO_MANAGEMENT: 'productivity',
+
+            # Entertainment
+            Intent.JOKES: 'entertainment',
+            Intent.TTS_CONTROL: 'entertainment',
+
+            # Location services
+            Intent.LOCATION_SERVICES: 'location_services',
+
+            # System monitoring
+            Intent.SYSTEM_MONITORING: 'system_monitoring',
+            Intent.WINDOWS_SYSTEM_INFO: 'system_monitoring',
+
+            # File operations
+            Intent.FILE_OPERATION: 'file_operations',
+
+            # Windows specific
+            Intent.WINDOWS_SERVICES: 'windows_admin',
+            Intent.WINDOWS_REGISTRY: 'windows_admin',
+            Intent.WINDOWS_EVENT_LOG: 'windows_admin',
+
+            # Dictation
+            Intent.DICTATION: 'dictation',
+
+            # Mode switching
+            Intent.SWITCH_MODE: 'mode_control'
+        }
+
+        return categories.get(intent, 'other')
+
+    def _calculate_complexity_score(self, text: str, parameters: Dict[str, Any]) -> float:
+        """Calculate complexity score for a command."""
+        score = 0.0
+
+        # Length factor
+        score += min(len(text) / 100, 1.0) * 0.3
+
+        # Entity count factor
+        entity_count = len(parameters)
+        score += min(entity_count / 5, 1.0) * 0.4
+
+        # Special characters/keywords factor
+        special_indicators = ['and', 'or', 'with', 'using', 'from', 'to', 'at', 'by']
+        special_count = sum(1 for word in text.lower().split() if word in special_indicators)
+        score += min(special_count / 3, 1.0) * 0.3
+
+        return round(score, 2)
+
+    def _calculate_success_rate(self) -> float:
+        """Calculate current success rate."""
+        total = self.stats['commands_processed']
+        if total == 0:
+            return 0.0
+        return self.stats['successful_commands'] / total
+
+    def get_ensemble_stats(self) -> dict:
+        """Get ensemble classifier statistics."""
+        if self.ensemble_classifier:
+            return self.ensemble_classifier.get_stats()
+        return {"status": "ensemble_not_available"}
+
+    def update_ensemble_config(self, **kwargs):
+        """Update ensemble classifier configuration."""
+        if self.ensemble_classifier:
+            self.ensemble_classifier.update_config(**kwargs)
+            print(f"[PARSER] Ensemble config updated: {kwargs}")
+        else:
+            print("[WARNING] Ensemble classifier not available for config update")
 
 
 # Backward compatibility

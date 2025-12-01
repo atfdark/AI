@@ -1,0 +1,443 @@
+Voice Assistant Commands for Whisper Fine-tuning
+==================================================
+
+   1. add buy milk to todo
+   2. add task
+   3. add task buy milk to todo
+   4. add task clean room
+   5. add task test task
+   6. battery status
+   7. bring up calculator
+   8. bring up chrome
+   9. bring up excel
+  10. bring up firefox
+  11. bring up notepad
+  12. bring up powerpoint
+  13. bring up word
+  14. calculate distance between paris and berlin
+  15. can you add task
+  16. can you add task buy milk to todo
+  17. can you add task test task
+  18. can you complete nonexistent task
+  19. can you create todo list for shopping
+  20. can you create todo list for work
+  21. can you get news
+  22. can you go to
+  23. can you go to google.com
+  24. can you go to https://www.google.com
+  25. can you go to https://www.test.com
+  26. can you go to invalid site
+  27. can you go to invalid-url
+  28. can you go to www.example.com
+  29. can you latest news
+  30. can you list my todo lists
+  31. can you mark as done
+  32. can you mark test task as done
+  33. can you news update
+  34. can you open calculator for me
+  35. can you open chrome for me
+  36. can you open excel for me
+  37. can you open firefox for me
+  38. can you open notepad for me
+  39. can you open powerpoint for me
+  40. can you open word for me
+  41. can you remove from todo
+  42. can you remove nonexistent task from todo
+  43. can you remove test task from todo
+  44. can you search for python
+  45. can you search for test
+  46. can you search for unknown topic
+  47. can you show my todo lists
+  48. can you tell me the news
+  49. can you what
+  50. capture screen
+  51. change voice to female
+  52. close window
+  53. complete nonexistent task
+  54. copy
+  55. could you add task
+  56. could you add task buy milk to todo
+  57. could you add task test task
+  58. could you complete nonexistent task
+  59. could you create todo list for shopping
+  60. could you create todo list for work
+  61. could you get news
+  62. could you go to
+  63. could you go to google.com
+  64. could you go to https://www.google.com
+  65. could you go to https://www.test.com
+  66. could you go to invalid site
+  67. could you go to invalid-url
+  68. could you go to www.example.com
+  69. could you latest news
+  70. could you list my todo lists
+  71. could you mark as done
+  72. could you mark test task as done
+  73. could you news update
+  74. could you remove from todo
+  75. could you remove nonexistent task from todo
+  76. could you remove test task from todo
+  77. could you search for python
+  78. could you search for test
+  79. could you search for unknown topic
+  80. could you show my todo lists
+  81. could you tell me the news
+  82. could you what
+  83. create todo list for shopping
+  84. create todo list for work
+  85. cut
+  86. decrease volume
+  87. disk space
+  88. explain artificial intelligence
+  89. explain machine learning
+  90. explain python programming
+  91. explain quantum physics
+  92. find coordinates for tokyo
+  93. find information about artificial intelligence
+  94. find information about machine learning
+  95. find information about python programming
+  96. find information about weather today
+  97. find machine learning explained on youtube
+  98. find music on youtube
+  99. find my location
+ 100. find python tutorial on youtube
+ 101. funny joke
+ 102. get news
+ 103. go to
+ 104. go to google.com
+ 105. go to https://www.google.com
+ 106. go to https://www.test.com
+ 107. go to invalid site
+ 108. go to invalid-url
+ 109. go to www.example.com
+ 110. google artificial intelligence
+ 111. google machine learning
+ 112. google python programming
+ 113. google weather today
+ 114. hey jarvis add task
+ 115. hey jarvis add task buy milk to todo
+ 116. hey jarvis add task test task
+ 117. hey jarvis complete nonexistent task
+ 118. hey jarvis create todo list for shopping
+ 119. hey jarvis create todo list for work
+ 120. hey jarvis get news
+ 121. hey jarvis go to
+ 122. hey jarvis go to google.com
+ 123. hey jarvis go to https://www.google.com
+ 124. hey jarvis go to https://www.test.com
+ 125. hey jarvis go to invalid site
+ 126. hey jarvis go to invalid-url
+ 127. hey jarvis go to www.example.com
+ 128. hey jarvis latest news
+ 129. hey jarvis list my todo lists
+ 130. hey jarvis mark as done
+ 131. hey jarvis mark test task as done
+ 132. hey jarvis news update
+ 133. hey jarvis remove from todo
+ 134. hey jarvis remove nonexistent task from todo
+ 135. hey jarvis remove test task from todo
+ 136. hey jarvis search for python
+ 137. hey jarvis search for test
+ 138. hey jarvis search for unknown topic
+ 139. hey jarvis show my todo lists
+ 140. hey jarvis tell me the news
+ 141. hey jarvis what
+ 142. how far is new york from london
+ 143. how is the weather in london
+ 144. how is the weather in mumbai
+ 145. how is the weather in new york
+ 146. how is the weather in paris
+ 147. how is the weather in tokyo
+ 148. how much memory is being used
+ 149. i need calculator
+ 150. i need chrome
+ 151. i need excel
+ 152. i need firefox
+ 153. i need notepad
+ 154. i need powerpoint
+ 155. i need to know show my todo lists
+ 156. i need to know what
+ 157. i need word
+ 158. i want you to add task
+ 159. i want you to add task buy milk to todo
+ 160. i want you to add task test task
+ 161. i want you to complete nonexistent task
+ 162. i want you to create todo list for shopping
+ 163. i want you to create todo list for work
+ 164. i want you to get news
+ 165. i want you to go to
+ 166. i want you to go to google.com
+ 167. i want you to go to https://www.google.com
+ 168. i want you to go to https://www.test.com
+ 169. i want you to go to invalid site
+ 170. i want you to go to invalid-url
+ 171. i want you to go to www.example.com
+ 172. i want you to latest news
+ 173. i want you to list my todo lists
+ 174. i want you to mark as done
+ 175. i want you to mark test task as done
+ 176. i want you to news update
+ 177. i want you to remove from todo
+ 178. i want you to remove nonexistent task from todo
+ 179. i want you to remove test task from todo
+ 180. i want you to search for python
+ 181. i want you to search for test
+ 182. i want you to search for unknown topic
+ 183. i want you to show my todo lists
+ 184. i want you to tell me the news
+ 185. i want you to what
+ 186. increase volume
+ 187. jarvis add task
+ 188. jarvis add task buy milk to todo
+ 189. jarvis add task test task
+ 190. jarvis complete nonexistent task
+ 191. jarvis create todo list for shopping
+ 192. jarvis create todo list for work
+ 193. jarvis get news
+ 194. jarvis go to
+ 195. jarvis go to google.com
+ 196. jarvis go to https://www.google.com
+ 197. jarvis go to https://www.test.com
+ 198. jarvis go to invalid site
+ 199. jarvis go to invalid-url
+ 200. jarvis go to www.example.com
+ 201. jarvis latest news
+ 202. jarvis list my todo lists
+ 203. jarvis mark as done
+ 204. jarvis mark test task as done
+ 205. jarvis news update
+ 206. jarvis please add task
+ 207. jarvis please add task buy milk to todo
+ 208. jarvis please add task test task
+ 209. jarvis please complete nonexistent task
+ 210. jarvis please create todo list for shopping
+ 211. jarvis please create todo list for work
+ 212. jarvis please get news
+ 213. jarvis please go to
+ 214. jarvis please go to google.com
+ 215. jarvis please go to https://www.google.com
+ 216. jarvis please go to https://www.test.com
+ 217. jarvis please go to invalid site
+ 218. jarvis please go to invalid-url
+ 219. jarvis please go to www.example.com
+ 220. jarvis please latest news
+ 221. jarvis please list my todo lists
+ 222. jarvis please mark as done
+ 223. jarvis please mark test task as done
+ 224. jarvis please news update
+ 225. jarvis please remove from todo
+ 226. jarvis please remove nonexistent task from todo
+ 227. jarvis please remove test task from todo
+ 228. jarvis please search for python
+ 229. jarvis please search for test
+ 230. jarvis please search for unknown topic
+ 231. jarvis please show my todo lists
+ 232. jarvis please tell me the news
+ 233. jarvis please what
+ 234. jarvis remove from todo
+ 235. jarvis remove nonexistent task from todo
+ 236. jarvis remove test task from todo
+ 237. jarvis search for python
+ 238. jarvis search for test
+ 239. jarvis search for unknown topic
+ 240. jarvis show my todo lists
+ 241. jarvis tell me the news
+ 242. jarvis what
+ 243. joke please
+ 244. latest news
+ 245. launch calculator
+ 246. launch chrome
+ 247. launch excel
+ 248. launch firefox
+ 249. launch notepad
+ 250. launch powerpoint
+ 251. launch word
+ 252. list my tasks
+ 253. list my todo lists
+ 254. list voices
+ 255. look up artificial intelligence
+ 256. look up machine learning
+ 257. look up python programming
+ 258. look up weather today
+ 259. make me laugh
+ 260. mark as done
+ 261. mark buy milk as done
+ 262. mark test task as done
+ 263. maximize window
+ 264. minimize window
+ 265. mute
+ 266. network info
+ 267. news update
+ 268. next window
+ 269. open calculator
+ 270. open chrome
+ 271. open excel
+ 272. open firefox
+ 273. open notepad
+ 274. open powerpoint
+ 275. open word
+ 276. paste
+ 277. play machine learning explained video
+ 278. play music video
+ 279. play python tutorial video
+ 280. please add task
+ 281. please add task buy milk to todo
+ 282. please add task test task
+ 283. please complete nonexistent task
+ 284. please create todo list for shopping
+ 285. please create todo list for work
+ 286. please get news
+ 287. please go to
+ 288. please go to google.com
+ 289. please go to https://www.google.com
+ 290. please go to https://www.test.com
+ 291. please go to invalid site
+ 292. please go to invalid-url
+ 293. please go to www.example.com
+ 294. please latest news
+ 295. please list my todo lists
+ 296. please mark as done
+ 297. please mark test task as done
+ 298. please news update
+ 299. please remove from todo
+ 300. please remove nonexistent task from todo
+ 301. please remove test task from todo
+ 302. please search for python
+ 303. please search for test
+ 304. please search for unknown topic
+ 305. please show my todo lists
+ 306. please tell me the news
+ 307. please what
+ 308. previous window
+ 309. print
+ 310. programming joke
+ 311. redo
+ 312. remove buy milk from todo
+ 313. remove from todo
+ 314. remove nonexistent task from todo
+ 315. remove test task from todo
+ 316. run calculator
+ 317. run chrome
+ 318. run excel
+ 319. run firefox
+ 320. run notepad
+ 321. run powerpoint
+ 322. run word
+ 323. running processes
+ 324. save
+ 325. save as
+ 326. search for artificial intelligence
+ 327. search for machine learning
+ 328. search for python
+ 329. search for python programming
+ 330. search for test
+ 331. search for unknown topic
+ 332. search for weather today
+ 333. search google for artificial intelligence
+ 334. search google for machine learning
+ 335. search google for python programming
+ 336. search google for weather today
+ 337. search wikipedia for artificial intelligence
+ 338. search wikipedia for machine learning
+ 339. search wikipedia for python programming
+ 340. search wikipedia for quantum physics
+ 341. search youtube for machine learning explained
+ 342. search youtube for music
+ 343. search youtube for python tutorial
+ 344. select all
+ 345. set voice to male
+ 346. show me calculator
+ 347. show me chrome
+ 348. show me excel
+ 349. show me firefox
+ 350. show me notepad
+ 351. show me powerpoint
+ 352. show me word
+ 353. show my todo lists
+ 354. speak faster
+ 355. speak slower
+ 356. start calculator
+ 357. start chrome
+ 358. start excel
+ 359. start firefox
+ 360. start notepad
+ 361. start powerpoint
+ 362. start word
+ 363. switch window
+ 364. take a screenshot
+ 365. tell a programming joke
+ 366. tell me a joke
+ 367. tell me about artificial intelligence
+ 368. tell me about machine learning
+ 369. tell me about python programming
+ 370. tell me about quantum physics
+ 371. tell me show my todo lists
+ 372. tell me the news
+ 373. tell me what
+ 374. temperature in london
+ 375. temperature in mumbai
+ 376. temperature in new york
+ 377. temperature in paris
+ 378. temperature in tokyo
+ 379. test voices
+ 380. turn volume down
+ 381. turn volume up
+ 382. undo
+ 383. unmute
+ 384. volume down
+ 385. volume up
+ 386. weather in london
+ 387. weather in mumbai
+ 388. weather in new york
+ 389. weather in paris
+ 390. weather in tokyo
+ 391. what
+ 392. what do i have to do
+ 393. what is artificial intelligence
+ 394. what is machine learning
+ 395. what is python programming
+ 396. what is quantum physics
+ 397. what's my cpu usage
+ 398. what's my location
+ 399. what's the news
+ 400. what's the weather like in london
+ 401. what's the weather like in mumbai
+ 402. what's the weather like in new york
+ 403. what's the weather like in paris
+ 404. what's the weather like in tokyo
+ 405. where am i
+ 406. wikipedia artificial intelligence
+ 407. wikipedia machine learning
+ 408. wikipedia python programming
+ 409. wikipedia quantum physics
+ 410. would you add task
+ 411. would you add task buy milk to todo
+ 412. would you add task test task
+ 413. would you complete nonexistent task
+ 414. would you create todo list for shopping
+ 415. would you create todo list for work
+ 416. would you get news
+ 417. would you go to
+ 418. would you go to google.com
+ 419. would you go to https://www.google.com
+ 420. would you go to https://www.test.com
+ 421. would you go to invalid site
+ 422. would you go to invalid-url
+ 423. would you go to www.example.com
+ 424. would you latest news
+ 425. would you list my todo lists
+ 426. would you mark as done
+ 427. would you mark test task as done
+ 428. would you news update
+ 429. would you remove from todo
+ 430. would you remove nonexistent task from todo
+ 431. would you remove test task from todo
+ 432. would you search for python
+ 433. would you search for test
+ 434. would you search for unknown topic
+ 435. would you show my todo lists
+ 436. would you tell me the news
+ 437. would you what
+ 438. youtube machine learning explained
+ 439. youtube music
+ 440. youtube python tutorial

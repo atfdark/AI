@@ -1,0 +1,133 @@
+================================================================================
+ML vs Regex System Comparison Report
+================================================================================
+
+OVERALL PERFORMANCE COMPARISON
+----------------------------------------
+
+REGEX System:
+  Accuracy: 51.43%
+  Average Confidence: 0.78
+  Average Processing Time: 0.0001s
+  Successful Tests: 36/70
+
+ML System:
+  Accuracy: 81.43%
+  Average Confidence: 0.89
+  Average Processing Time: 0.0389s
+  Successful Tests: 57/70
+
+TEXT_CORRECTION System:
+  Accuracy: 87.50%
+  Average Confidence: 0.95
+  Average Processing Time: 0.0028s
+  Successful Tests: 7/8
+
+DIALOGUE_STATE System:
+  Accuracy: 50.00%
+  Average Confidence: 0.90
+  Average Processing Time: 0.0043s
+  Successful Tests: 2/4
+
+
+DETAILED BREAKDOWN BY CATEGORY
+----------------------------------------
+
+APPLICATION Category:
+  REGEX: 4/5 (80.0%)
+  ML: 5/5 (100.0%)
+
+ASR_ERROR Category:
+  REGEX: 4/4 (100.0%)
+  ML: 4/4 (100.0%)
+
+COMPLEX Category:
+  REGEX: 1/3 (33.3%)
+  ML: 0/3 (0.0%)
+
+CORRECTION Category:
+
+DIALOGUE Category:
+
+EDGE Category:
+  REGEX: 5/5 (100.0%)
+  ML: 5/5 (100.0%)
+
+EDUCATION Category:
+  REGEX: 2/2 (100.0%)
+  ML: 2/2 (100.0%)
+
+ENTERTAINMENT Category:
+  REGEX: 1/2 (50.0%)
+  ML: 2/2 (100.0%)
+
+FILE Category:
+  REGEX: 0/1 (0.0%)
+  ML: 0/1 (0.0%)
+
+FINANCE Category:
+  REGEX: 0/1 (0.0%)
+  ML: 1/1 (100.0%)
+
+FOOD Category:
+  REGEX: 0/1 (0.0%)
+  ML: 0/1 (0.0%)
+
+INFORMATION Category:
+  REGEX: 3/6 (50.0%)
+  ML: 5/6 (83.3%)
+
+LOCATION Category:
+  REGEX: 0/2 (0.0%)
+  ML: 1/2 (50.0%)
+
+MEDIA Category:
+  REGEX: 0/2 (0.0%)
+  ML: 2/2 (100.0%)
+
+NER Category:
+  REGEX: 0/4 (0.0%)
+  ML: 1/4 (25.0%)
+
+PRODUCTIVITY Category:
+  REGEX: 0/3 (0.0%)
+  ML: 2/3 (66.7%)
+
+SEARCH Category:
+  REGEX: 3/4 (75.0%)
+  ML: 4/4 (100.0%)
+
+SHOPPING Category:
+  REGEX: 0/1 (0.0%)
+  ML: 1/1 (100.0%)
+
+SYSTEM Category:
+  REGEX: 7/15 (46.7%)
+  ML: 14/15 (93.3%)
+
+TEXT Category:
+  REGEX: 4/4 (100.0%)
+  ML: 4/4 (100.0%)
+
+WEATHER Category:
+  REGEX: 1/2 (50.0%)
+  ML: 2/2 (100.0%)
+
+WEB Category:
+  REGEX: 1/3 (33.3%)
+  ML: 2/3 (66.7%)
+
+
+KEY IMPROVEMENTS IDENTIFIED
+----------------------------------------
+Accuracy Improvement: +30.0%
+Confidence Improvement: +0.12
+Processing Time Difference: +0.0388s
+
+
+RECOMMENDATIONS
+----------------------------------------
+✓ ML system shows superior accuracy - recommended for production
+✓ ML system provides better confidence scores
+
+================================================================================
