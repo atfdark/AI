@@ -13,3 +13,5 @@
 {"timestamp": "2025-12-03T16:56:27.150324", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}
 {"timestamp": "2025-12-03T16:57:35.419627", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}
 {"timestamp": "2025-12-03T17:04:46.128400", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}
+{"timestamp": "2025-12-03T19:54:52.466801", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}
+{"timestamp": "2025-12-03T19:55:56.940446", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}

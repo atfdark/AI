@@ -3,6 +3,7 @@ import tempfile
 import threading
 import time
 import json
+import queue
 try:
     import pyttsx3
     PYTTSX3_AVAILABLE = True
@@ -51,6 +52,10 @@ class TTS:
         # For halting playback
         self.halt_event = threading.Event()
         self.is_speaking = False
+
+        # TTS request queue for main thread processing
+        self.tts_queue = queue.Queue()
+
         print(f"[TTS] pyttsx3 initialized with Jarvis male voice")
 
     def _set_jarvis_voice(self):
@@ -89,11 +94,30 @@ class TTS:
             # Synchronous mode for startup messages
             self._speak_text(text)
         else:
-            # Asynchronous mode for during operation
-            thread = threading.Thread(target=self._speak_text, args=(text,), daemon=True)
-            thread.start()
-            # Small delay to let thread start
-            time.sleep(0.1)
+            # Asynchronous mode for during operation - use queue instead of threads
+            self.async_speak(text)
+
+    def async_speak(self, text):
+        """Enqueue TTS request for processing in main thread."""
+        if not self.engine:
+            print(f"[TTS] Engine not available, skipping: {text}")
+            return
+
+        print(f"[TTS] Enqueuing speech: {text}")
+        self.tts_queue.put(text)
+
+    def process_queue(self):
+        """Process one TTS request from the queue in the main thread."""
+        if self.tts_queue.empty():
+            return False
+
+        try:
+            text = self.tts_queue.get_nowait()
+            print(f"[TTS] Processing queued speech: {text}")
+            self._speak_text(text)
+            return True
+        except queue.Empty:
+            return False
 
     def switch_language(self, language: str):
         """Switch to a different language."""

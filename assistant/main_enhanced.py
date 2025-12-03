@@ -270,6 +270,9 @@ class VoiceAssistant:
                 # Performance monitoring
                 self.performance_monitor.check_system_resources()
 
+                # Process TTS queue in main thread
+                self.tts.process_queue()
+
                 # Handle keyboard input for debugging
                 if self._check_debug_input():
                     self._handle_debug_command()
