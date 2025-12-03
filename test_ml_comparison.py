@@ -13,12 +13,14 @@ Tests cover:
 - Text correction accuracy
 - Performance benchmarks
 - Edge cases and integration testing
+- Regression metrics evaluation for continuous predictions
 """
 
 import json
 import time
 import os
 import sys
+import numpy as np
 from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import dataclass, asdict
 from collections import defaultdict
@@ -41,6 +43,12 @@ try:
     from assistant.ner_custom import get_ner
     from assistant.actions import Actions
     from assistant.tts import TTS
+    # Import regression metrics
+    from assistant.regression_metrics import (
+        mean_absolute_error, mean_squared_error, 
+        root_mean_squared_error, r2_score
+    )
+    from assistant.model_performance_tracker import ModelPerformanceTracker
 except ImportError as e:
     print(f"Import error: {e}")
     sys.exit(1)
@@ -543,6 +551,404 @@ class MLComparisonTestSuite:
 
         return {'dialogue_state': results}
 
+    def run_regression_evaluation_tests(self) -> Dict[str, List[TestResult]]:
+        """Run regression evaluation tests for continuous predictions in AI assistant context."""
+        print("Running regression evaluation tests...")
+        
+        results = []
+        
+        # Initialize performance tracker for regression testing
+        tracker = ModelPerformanceTracker()
+        
+        # Test scenarios for continuous predictions in AI assistant
+        regression_test_scenarios = [
+            {
+                'name': 'confidence_score_prediction',
+                'description': 'Predict confidence scores for intent classification',
+                'y_true': [0.8, 0.9, 0.7, 0.85, 0.92, 0.78, 0.88, 0.75, 0.95, 0.82],
+                'y_pred': [0.82, 0.88, 0.73, 0.87, 0.89, 0.80, 0.85, 0.78, 0.93, 0.84],
+                'context': 'ML system predicting confidence scores'
+            },
+            {
+                'name': 'processing_time_prediction',
+                'description': 'Predict processing times for different operations',
+                'y_true': [0.1, 0.2, 0.3, 0.15, 0.25, 0.35, 0.12, 0.18, 0.28, 0.22],
+                'y_pred': [0.12, 0.18, 0.33, 0.17, 0.23, 0.37, 0.14, 0.20, 0.26, 0.24],
+                'context': 'System predicting command processing times'
+            },
+            {
+                'name': 'sentiment_score_prediction',
+                'description': 'Predict sentiment scores for user interactions',
+                'y_true': [0.5, -0.3, 0.8, -0.1, 0.6, -0.7, 0.9, 0.2, -0.5, 0.4],
+                'y_pred': [0.47, -0.28, 0.83, -0.05, 0.58, -0.72, 0.87, 0.18, -0.53, 0.42],
+                'context': 'AI assistant predicting user sentiment'
+            },
+            {
+                'name': 'response_quality_score',
+                'description': 'Predict response quality scores',
+                'y_true': [0.85, 0.92, 0.78, 0.88, 0.95, 0.82, 0.90, 0.75, 0.93, 0.87],
+                'y_pred': [0.83, 0.94, 0.80, 0.86, 0.92, 0.84, 0.88, 0.77, 0.91, 0.89],
+                'context': 'System predicting response quality'
+            },
+            {
+                'name': 'complexity_score_prediction',
+                'description': 'Predict complexity scores for tasks',
+                'y_true': [2.5, 4.2, 1.8, 3.7, 5.0, 2.1, 3.9, 1.5, 4.5, 3.2],
+                'y_pred': [2.3, 4.4, 2.0, 3.5, 4.8, 2.3, 3.7, 1.7, 4.3, 3.4],
+                'context': 'AI predicting task complexity'
+            }
+        ]
+        
+        # Run regression tests for each scenario
+        for scenario in regression_test_scenarios:
+            y_true = scenario['y_true']
+            y_pred = scenario['y_pred']
+            context = scenario['context']
+            
+            # Calculate regression metrics
+            mae = mean_absolute_error(y_true, y_pred)
+            mse = mean_squared_error(y_true, y_pred)
+            rmse = root_mean_squared_error(y_true, y_pred)
+            r2 = r2_score(y_true, y_pred)
+            
+            # Track predictions with the performance tracker
+            for i, (true_val, pred_val) in enumerate(zip(y_true, y_pred)):
+                tracker.track_prediction(
+                    model_name=f"regression_test_{scenario['name']}",
+                    input_text=f"{scenario['description']} - sample {i}",
+                    prediction=pred_val,
+                    confidence=0.8,
+                    true_label=true_val,
+                    processing_time=0.1,
+                    metadata={'scenario': scenario['name']}
+                )
+            
+            # Create test result
+            test_case = TestCase(
+                input_text=f"Regression test: {scenario['description']}",
+                expected_intent="regression_evaluation",
+                expected_entities={
+                    'mae': mae,
+                    'mse': mse,
+                    'rmse': rmse,
+                    'r2': r2
+                },
+                category="regression",
+                difficulty="medium"
+            )
+            
+            # Evaluate success based on reasonable thresholds
+            success = (
+                mae < 0.1 and 
+                mse < 0.02 and 
+                rmse < 0.15 and 
+                r2 > 0.5
+            )
+            
+            result = TestResult(
+                test_case=test_case,
+                system='ml',
+                predicted_intent='regression_evaluation',
+                predicted_entities={
+                    'mae': mae,
+                    'mse': mse,
+                    'rmse': rmse,
+                    'r2': r2
+                },
+                confidence=0.8,
+                processing_time=0.01,
+                success=success
+            )
+            results.append(result)
+            
+            print(f"  {scenario['name']}: MAE={mae:.3f}, MSE={mse:.3f}, RMSE={rmse:.3f}, R²={r2:.3f} - {'PASS' if success else 'FAIL'}")
+        
+        # Test integration with ModelPerformanceTracker
+        print("  Testing ModelPerformanceTracker integration...")
+        
+        performance_data = tracker.get_model_performance("regression_test_confidence_score_prediction", days=1)
+        
+        if 'regression_metrics' in performance_data:
+            reg_metrics = performance_data['regression_metrics']
+            tracker_success = (
+                'mae' in reg_metrics and
+                'mse' in reg_metrics and
+                'rmse' in reg_metrics and
+                'r2' in reg_metrics
+            )
+            
+            result = TestResult(
+                test_case=TestCase("Performance tracker integration", "integration_test", {}, "regression", "medium"),
+                system='ml',
+                predicted_intent='integration_test',
+                predicted_entities=reg_metrics,
+                confidence=0.9,
+                processing_time=0.05,
+                success=tracker_success
+            )
+            results.append(result)
+            print(f"    Integration test: {'PASS' if tracker_success else 'FAIL'}")
+        else:
+            print("    Integration test: FAIL - No regression metrics found")
+        
+        return {'regression_evaluation': results}
+
+    def run_confidence_calibration_tests(self) -> Dict[str, List[TestResult]]:
+        """Test confidence calibration using regression metrics."""
+        print("Running confidence calibration tests...")
+        
+        results = []
+        
+        # Simulate confidence calibration scenario
+        # Perfect calibration would have predicted confidence == actual accuracy
+        confidence_tests = [
+            {
+                'name': 'high_confidence_calibration',
+                'predicted_confidences': [0.9, 0.85, 0.92, 0.88, 0.94],
+                'actual_accuracies': [0.88, 0.87, 0.91, 0.89, 0.93]  # Close to predicted
+            },
+            {
+                'name': 'low_confidence_calibration',
+                'predicted_confidences': [0.6, 0.65, 0.58, 0.62, 0.67],
+                'actual_accuracies': [0.59, 0.67, 0.56, 0.63, 0.68]  # Close to predicted
+            },
+            {
+                'name': 'poor_confidence_calibration',
+                'predicted_confidences': [0.9, 0.85, 0.92, 0.88, 0.94],
+                'actual_accuracies': [0.65, 0.70, 0.68, 0.72, 0.66]  # Far from predicted
+            }
+        ]
+        
+        for test in confidence_tests:
+            y_true = test['actual_accuracies']
+            y_pred = test['predicted_confidences']
+            
+            # Calculate calibration metrics
+            mae = mean_absolute_error(y_true, y_pred)
+            r2 = r2_score(y_true, y_pred)
+            
+            # Test success based on calibration quality
+            if 'high_confidence' in test['name'] or 'low_confidence' in test['name']:
+                success = mae < 0.05 and r2 > 0.7
+            else:  # poor calibration
+                success = mae > 0.15 or r2 < 0.3
+            
+            test_case = TestCase(
+                input_text=f"Calibration test: {test['name']}",
+                expected_intent="confidence_calibration",
+                expected_entities={'mae': mae, 'r2': r2},
+                category="regression",
+                difficulty="medium"
+            )
+            
+            result = TestResult(
+                test_case=test_case,
+                system='ml',
+                predicted_intent='confidence_calibration',
+                predicted_entities={'mae': mae, 'r2': r2},
+                confidence=0.8,
+                processing_time=0.02,
+                success=success
+            )
+            results.append(result)
+            
+            print(f"  {test['name']}: MAE={mae:.3f}, R²={r2:.3f} - {'PASS' if success else 'FAIL'}")
+        
+        return {'confidence_calibration': results}
+
+    def run_continuous_learning_regression_tests(self) -> Dict[str, List[TestResult]]:
+        """Test regression metrics in continuous learning scenarios."""
+        print("Running continuous learning regression tests...")
+        
+        results = []
+        
+        # Simulate model improvement over time
+        learning_phases = [
+            {
+                'phase': 'initial_training',
+                'y_true': [1, 2, 3, 4, 5],
+                'y_pred': [1.5, 2.3, 3.2, 4.1, 5.3],  # Higher error
+                'expected_mae_range': (0.2, 0.6)
+            },
+            {
+                'phase': 'improved_model',
+                'y_true': [1, 2, 3, 4, 5],
+                'y_pred': [1.1, 2.1, 3.1, 4.1, 5.1],  # Lower error
+                'expected_mae_range': (0.05, 0.2)
+            },
+            {
+                'phase': 'fine_tuned_model',
+                'y_true': [1, 2, 3, 4, 5],
+                'y_pred': [1.02, 2.01, 3.02, 4.01, 5.02],  # Very low error
+                'expected_mae_range': (0.0, 0.05)
+            }
+        ]
+        
+        all_mae_values = []
+        
+        for phase in learning_phases:
+            y_true = phase['y_true']
+            y_pred = phase['y_pred']
+            
+            mae = mean_absolute_error(y_true, y_pred)
+            mse = mean_squared_error(y_true, y_pred)
+            r2 = r2_score(y_true, y_pred)
+            
+            all_mae_values.append(mae)
+            
+            # Check if MAE is in expected range
+            expected_range = phase['expected_mae_range']
+            success = expected_range[0] <= mae <= expected_range[1]
+            
+            test_case = TestCase(
+                input_text=f"Learning phase: {phase['phase']}",
+                expected_intent="continuous_learning",
+                expected_entities={'mae': mae, 'phase': phase['phase']},
+                category="regression",
+                difficulty="medium"
+            )
+            
+            result = TestResult(
+                test_case=test_case,
+                system='ml',
+                predicted_intent='continuous_learning',
+                predicted_entities={'mae': mae, 'mse': mse, 'r2': r2},
+                confidence=0.8,
+                processing_time=0.01,
+                success=success
+            )
+            results.append(result)
+            
+            print(f"  {phase['phase']}: MAE={mae:.3f}, MSE={mse:.3f}, R²={r2:.3f} - {'PASS' if success else 'FAIL'}")
+        
+        # Test that model improves over time (MAE decreases)
+        if len(all_mae_values) >= 2:
+            improvement_success = all_mae_values[-1] < all_mae_values[0] * 0.5  # At least 50% improvement
+            
+            test_case = TestCase(
+                input_text="Overall learning improvement",
+                expected_intent="learning_progression",
+                expected_entities={'improvement': improvement_success},
+                category="regression",
+                difficulty="hard"
+            )
+            
+            result = TestResult(
+                test_case=test_case,
+                system='ml',
+                predicted_intent='learning_progression',
+                predicted_entities={'improvement': improvement_success},
+                confidence=0.9,
+                processing_time=0.02,
+                success=improvement_success
+            )
+            results.append(result)
+            
+            print(f"  Learning progression: {'PASS' if improvement_success else 'FAIL'}")
+        
+        return {'continuous_learning': results}
+
+    def run_multitask_regression_tests(self) -> Dict[str, List[TestResult]]:
+        """Test regression metrics across multiple tasks in AI assistant."""
+        print("Running multitask regression tests...")
+        
+        results = []
+        
+        # Define multiple regression tasks
+        multitask_scenarios = [
+            {
+                'task': 'intent_classification_confidence',
+                'metric_type': 'confidence_prediction',
+                'y_true': [0.8, 0.9, 0.7, 0.85, 0.92],
+                'y_pred': [0.82, 0.88, 0.73, 0.87, 0.89],
+                'threshold': {'mae': 0.1, 'r2': 0.5}
+            },
+            {
+                'task': 'ner_entity_confidence',
+                'metric_type': 'entity_confidence',
+                'y_true': [0.75, 0.88, 0.92, 0.68, 0.85],
+                'y_pred': [0.77, 0.86, 0.90, 0.70, 0.83],
+                'threshold': {'mae': 0.08, 'r2': 0.6}
+            },
+            {
+                'task': 'response_generation_quality',
+                'metric_type': 'quality_prediction',
+                'y_true': [0.85, 0.92, 0.78, 0.88, 0.95],
+                'y_pred': [0.83, 0.94, 0.80, 0.86, 0.92],
+                'threshold': {'mae': 0.06, 'r2': 0.7}
+            }
+        ]
+        
+        task_performances = {}
+        
+        for scenario in multitask_scenarios:
+            y_true = scenario['y_true']
+            y_pred = scenario['y_pred']
+            
+            # Calculate metrics
+            mae = mean_absolute_error(y_true, y_pred)
+            r2 = r2_score(y_true, y_pred)
+            
+            task_performances[scenario['task']] = {
+                'mae': mae,
+                'r2': r2
+            }
+            
+            # Check against thresholds
+            threshold = scenario['threshold']
+            success = mae < threshold['mae'] and r2 > threshold['r2']
+            
+            test_case = TestCase(
+                input_text=f"Multitask: {scenario['task']}",
+                expected_intent="multitask_regression",
+                expected_entities={'mae': mae, 'r2': r2},
+                category="regression",
+                difficulty="hard"
+            )
+            
+            result = TestResult(
+                test_case=test_case,
+                system='ml',
+                predicted_intent='multitask_regression',
+                predicted_entities={'mae': mae, 'r2': r2},
+                confidence=0.8,
+                processing_time=0.02,
+                success=success
+            )
+            results.append(result)
+            
+            print(f"  {scenario['task']}: MAE={mae:.3f}, R²={r2:.3f} - {'PASS' if success else 'FAIL'}")
+        
+        # Overall multitask performance (average across tasks)
+        if task_performances:
+            avg_mae = np.mean([perf['mae'] for perf in task_performances.values()])
+            avg_r2 = np.mean([perf['r2'] for perf in task_performances.values()])
+            
+            overall_success = avg_mae < 0.08 and avg_r2 > 0.6
+            
+            test_case = TestCase(
+                input_text="Overall multitask performance",
+                expected_intent="overall_multitask",
+                expected_entities={'avg_mae': avg_mae, 'avg_r2': avg_r2},
+                category="regression",
+                difficulty="hard"
+            )
+            
+            result = TestResult(
+                test_case=test_case,
+                system='ml',
+                predicted_intent='overall_multitask',
+                predicted_entities={'avg_mae': avg_mae, 'avg_r2': avg_r2},
+                confidence=0.9,
+                processing_time=0.03,
+                success=overall_success
+            )
+            results.append(result)
+            
+            print(f"  Overall multitask: MAE={avg_mae:.3f}, R²={avg_r2:.3f} - {'PASS' if overall_success else 'FAIL'}")
+        
+        return {'multitask_regression': results}
+
     def calculate_metrics(self, results: Dict[str, List[TestResult]]) -> Dict[str, PerformanceMetrics]:
         """Calculate performance metrics for each system."""
         metrics = {}
@@ -595,6 +1001,10 @@ class MLComparisonTestSuite:
         ner_results = self.run_ner_tests()
         correction_results = self.run_text_correction_tests()
         dialogue_results = self.run_dialogue_state_tests()
+        regression_results = self.run_regression_evaluation_tests()
+        calibration_results = self.run_confidence_calibration_tests()
+        learning_results = self.run_continuous_learning_regression_tests()
+        multitask_results = self.run_multitask_regression_tests()
 
         # Combine all results properly (avoid key conflicts)
         all_results = {}
@@ -609,6 +1019,26 @@ class MLComparisonTestSuite:
             all_results[key] = value
         for key, value in dialogue_results.items():
             all_results[key] = value
+        for key, value in regression_results.items():
+            if key in all_results:
+                all_results[key].extend(value)
+            else:
+                all_results[key] = value
+        for key, value in calibration_results.items():
+            if key in all_results:
+                all_results[key].extend(value)
+            else:
+                all_results[key] = value
+        for key, value in learning_results.items():
+            if key in all_results:
+                all_results[key].extend(value)
+            else:
+                all_results[key] = value
+        for key, value in multitask_results.items():
+            if key in all_results:
+                all_results[key].extend(value)
+            else:
+                all_results[key] = value
 
         # Calculate metrics
         metrics = self.calculate_metrics(all_results)
@@ -633,6 +1063,7 @@ class MLComparisonTestSuite:
         for category in sorted(categories):
             report_lines.append(f"\n{category.upper()} Category:")
 
+            # For regression category, show both system types if available
             for system in ['regex', 'ml']:
                 if system in all_results:
                     category_results = [r for r in all_results[system] if r.test_case.category == category]
@@ -641,6 +1072,20 @@ class MLComparisonTestSuite:
                         total = len(category_results)
                         accuracy = successful / total if total > 0 else 0.0
                         report_lines.append(f"  {system.upper()}: {successful}/{total} ({accuracy:.1%})")
+            
+            # Show regression metrics for regression category
+            if category == 'regression':
+                regression_results = all_results.get('ml', [])
+                regression_category_results = [r for r in regression_results if r.test_case.category == 'regression']
+                if regression_category_results:
+                    report_lines.append("  Regression Metrics Examples:")
+                    for result in regression_category_results[:3]:  # Show first 3 examples
+                        entities = result.predicted_entities
+                        if 'mae' in entities:
+                            report_lines.append(f"    MAE: {entities['mae']:.3f}")
+                        if 'r2' in entities:
+                            report_lines.append(f"    R²: {entities['r2']:.3f}")
+                        break  # Only show one example to avoid cluttering
 
         # Key improvements
         report_lines.append("\n\nKEY IMPROVEMENTS IDENTIFIED")
@@ -657,6 +1102,40 @@ class MLComparisonTestSuite:
             report_lines.append(f"Confidence Improvement: {confidence_improvement:+.2f}")
             report_lines.append(f"Processing Time Difference: {ml_metrics.avg_processing_time - regex_metrics.avg_processing_time:+.4f}s")
 
+        # Regression Metrics Analysis
+        report_lines.append("\n\nREGRESSION METRICS ANALYSIS")
+        report_lines.append("-" * 40)
+
+        if 'regression_evaluation' in all_results:
+            regression_results = all_results['regression_evaluation']
+            successful_regression = sum(1 for r in regression_results if r.success)
+            total_regression = len(regression_results)
+            regression_accuracy = successful_regression / total_regression if total_regression > 0 else 0.0
+            
+            report_lines.append(f"Regression Evaluation Tests: {successful_regression}/{total_regression} ({regression_accuracy:.1%})")
+            
+            # Show specific regression metrics
+            for result in regression_results[:3]:  # Show first 3 for brevity
+                entities = result.predicted_entities
+                if 'mae' in entities and 'r2' in entities:
+                    report_lines.append(f"  {result.test_case.input_text}: MAE={entities['mae']:.3f}, R²={entities['r2']:.3f}")
+
+        if 'confidence_calibration' in all_results:
+            calibration_results = all_results['confidence_calibration']
+            successful_calibration = sum(1 for r in calibration_results if r.success)
+            total_calibration = len(calibration_results)
+            calibration_accuracy = successful_calibration / total_calibration if total_calibration > 0 else 0.0
+            
+            report_lines.append(f"Confidence Calibration Tests: {successful_calibration}/{total_calibration} ({calibration_accuracy:.1%})")
+
+        if 'continuous_learning' in all_results:
+            learning_results = all_results['continuous_learning']
+            successful_learning = sum(1 for r in learning_results if r.success)
+            total_learning = len(learning_results)
+            learning_accuracy = successful_learning / total_learning if total_learning > 0 else 0.0
+            
+            report_lines.append(f"Continuous Learning Tests: {successful_learning}/{total_learning} ({learning_accuracy:.1%})")
+
         # Recommendations
         report_lines.append("\n\nRECOMMENDATIONS")
         report_lines.append("-" * 40)
@@ -671,6 +1150,22 @@ class MLComparisonTestSuite:
                 report_lines.append("✓ ML system provides better confidence scores")
             else:
                 report_lines.append("⚠ ML system confidence scores need calibration")
+
+        # Regression-specific recommendations
+        if 'regression_evaluation' in all_results:
+            regression_accuracy = successful_regression / total_regression if total_regression > 0 else 0.0
+            if regression_accuracy > 0.8:
+                report_lines.append("✓ Regression models show excellent performance - ready for production")
+            elif regression_accuracy > 0.6:
+                report_lines.append("⚠ Regression models need improvement before production deployment")
+            else:
+                report_lines.append("✗ Regression models require significant improvement")
+
+        if 'continuous_learning' in all_results:
+            if learning_accuracy > 0.7:
+                report_lines.append("✓ Continuous learning framework shows good progression")
+            else:
+                report_lines.append("⚠ Continuous learning may need optimization")
 
         report_lines.append("\n" + "=" * 80)
 

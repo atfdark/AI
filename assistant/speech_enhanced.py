@@ -6,6 +6,15 @@ import json
 from typing import Optional, Callable
 import numpy as np
 
+# For echo cancellation and advanced audio processing
+try:
+    import pyaudio
+    import webrtcvad
+    PYAUDIO_AVAILABLE = True
+except ImportError:
+    PYAUDIO_AVAILABLE = False
+    print("[WARNING] PyAudio or webrtcvad not available, advanced audio processing disabled")
+
 # Import TextCorrector for ASR error correction
 try:
     from .text_corrector import TextCorrector
@@ -33,21 +42,30 @@ except ImportError:
 
 
 class EnhancedSpeechRecognizer:
-    """Enhanced speech recognizer supporting both Google Web API and offline Vosk.
-    
+    """Enhanced speech recognizer supporting multiple engines with strict listen-before-speak protocol.
+
     Features:
-    - Automatic fallback from online to offline recognition
+    - Automatic fallback from online to offline recognition (Google -> ML ASR -> Vosk -> PyAudio)
     - Configurable recognition engines
     - Better error handling and recovery
     - Performance monitoring
+    - Echo cancellation and noise reduction
+    - Hardware-level isolation support
+    - Voice Activity Detection for noise filtering
+
+    Alternatives to speech_recognition if insufficient:
+    - Use Vosk for offline recognition (requires model download)
+    - Use Whisper (OpenAI) for ML-based ASR (requires internet or local model)
+    - Use PyAudio with advanced filtering as final fallback
     """
 
-    def __init__(self, callback: Optional[Callable] = None, config_path: str = None, wake_word_callback: Optional[Callable] = None):
+    def __init__(self, callback: Optional[Callable] = None, config_path: str = None, wake_word_callback: Optional[Callable] = None, tts=None):
         self.recognizer = sr.Recognizer()
         self.callback = callback
         self.wake_word_callback = wake_word_callback
         self.config_path = config_path  # Store config_path as instance attribute
         self.config = self._load_config(config_path)
+        self.tts = tts  # TTS instance for listen-before-speak protocol
 
         # Language settings
         self.language_config = self.config.get('language', {})
@@ -75,6 +93,24 @@ class EnhancedSpeechRecognizer:
         self.ml_asr_model = None
         self.ml_asr_config = self.config.get('speech_recognition', {}).get('ml_asr', {})
 
+        # Echo cancellation and advanced audio processing
+        self.echo_cancellation_enabled = self.config.get('speech_recognition', {}).get('echo_cancellation', {}).get('enabled', False)
+        self.noise_gate_enabled = self.config.get('speech_recognition', {}).get('noise_gate', {}).get('enabled', False)
+        self.noise_gate_threshold = self.config.get('speech_recognition', {}).get('noise_gate', {}).get('threshold', 0.01)
+        self.hardware_isolation = self.config.get('speech_recognition', {}).get('hardware_isolation', {})
+        self.separate_devices = self.hardware_isolation.get('separate_devices', False)
+        self.preferred_output_device = self.hardware_isolation.get('preferred_output_device')
+
+        self.pyaudio_stream = None
+        self.vad = None
+        if PYAUDIO_AVAILABLE:
+            try:
+                self.vad = webrtcvad.Vad(3)  # Aggressiveness level 0-3
+                print("[INFO] Voice Activity Detection initialized")
+            except Exception as e:
+                print(f"[WARNING] Failed to initialize VAD: {e}")
+                self.vad = None
+
         # Text correction
         self.text_corrector = None
         if TEXT_CORRECTION_AVAILABLE:
@@ -89,6 +125,7 @@ class EnhancedSpeechRecognizer:
         self.stop_listening = None
         self.current_engine = self.config.get('preferred_engine', 'auto')
         self.is_listening = False
+        self.push_to_talk_mode = self.config.get('speech_recognition', {}).get('push_to_talk', {}).get('enabled', False)
 
         # Performance tracking
         self.recognition_stats = {
@@ -111,84 +148,130 @@ class EnhancedSpeechRecognizer:
     def _select_microphone_device(self) -> sr.Microphone:
         """Select an appropriate microphone device to avoid feedback loops.
 
-        Avoids devices like 'Stereo Mix', 'Speakers', etc. that capture speaker output.
+        Tests devices to ensure they actually work, avoiding devices that capture speaker output.
         """
         try:
             # Get list of all microphone devices
             devices = sr.Microphone.list_microphone_names()
             print(f"[INFO] Found {len(devices)} audio input devices")
+            logger.info(f"Available microphone devices: {devices}")
 
             # Check if user has configured a preferred microphone
             if self.preferred_microphone:
                 for i, device_name in enumerate(devices):
                     if self.preferred_microphone.lower() in device_name.lower():
-                        print(f"[INFO] Using configured microphone: {device_name} (index: {i})")
-                        return sr.Microphone(device_index=i)
-                print(f"[WARNING] Configured microphone '{self.preferred_microphone}' not found")
+                        print(f"[INFO] Testing configured microphone: {device_name} (index: {i})")
+                        if self._test_microphone_device(i, device_name):
+                            print(f"[INFO] Using configured microphone: {device_name} (index: {i})")
+                            logger.info(f"Using configured microphone: {device_name} (index: {i})")
+                            return sr.Microphone(device_index=i)
+                        else:
+                            print(f"[WARNING] Configured microphone '{device_name}' failed test")
+                print(f"[WARNING] Configured microphone '{self.preferred_microphone}' not found or failed test")
+                logger.warning(f"Configured microphone '{self.preferred_microphone}' not found or failed test")
 
             # Problematic device patterns to avoid (cause feedback loops)
             problematic_patterns = [
                 'stereo mix', 'mono mix', 'wave out', 'what u hear',
                 'speakers', 'headphones', 'output', 'playback',
                 'sound mapper', 'primary sound capture',
-                'steam streaming speak', 'steam streaming micro',
-                'steam streaming mic'  # This one was truncated in the list
+                'virtual audio cable', 'voice changer', 'audio repeater', 'loopback',
+                'capture', 'monitor', 'mixer', 'aggregate',
+                'default', 'system default', 'built-in output'
             ]
 
-            # Preferred device patterns (actual microphones)
+            # Preferred device patterns (actual microphones) - ordered by preference
             preferred_patterns = [
-                'microphone', 'mic', 'input', 'line in'
+                'microphone', 'mic', 'input'
             ]
 
-            selected_device = None
-            selected_index = None
+            tested_devices = []
 
-            # First, try to find a preferred microphone device
+            # First, try to find and test preferred microphone devices
             for i, device_name in enumerate(devices):
                 device_lower = device_name.lower()
 
-                # Skip problematic devices
+                # Skip obviously problematic devices
                 if any(pattern in device_lower for pattern in problematic_patterns):
                     print(f"[DEBUG] Skipping problematic device {i}: {device_name}")
+                    logger.debug(f"Skipped problematic device {i}: {device_name}")
                     continue
 
                 # Check if this is a preferred device
                 if any(pattern in device_lower for pattern in preferred_patterns):
-                    selected_device = device_name
-                    selected_index = i
-                    print(f"[INFO] Selected preferred microphone: {device_name} (index: {i})")
-                    break
+                    print(f"[INFO] Testing preferred microphone: {device_name} (index: {i})")
+                    if self._test_microphone_device(i, device_name):
+                        print(f"[INFO] Selected working preferred microphone: {device_name} (index: {i})")
+                        logger.info(f"Selected working preferred microphone: {device_name} (index: {i})")
+                        return sr.Microphone(device_index=i)
+                    else:
+                        tested_devices.append((i, device_name, False))
 
-            # If no preferred device found, try any non-problematic device
-            if selected_device is None:
-                for i, device_name in enumerate(devices):
-                    device_lower = device_name.lower()
+            # If no preferred device worked, try any non-problematic device
+            print("[INFO] No preferred microphone worked, testing all remaining devices...")
+            for i, device_name in enumerate(devices):
+                device_lower = device_name.lower()
 
-                    # Skip only the most problematic ones
-                    if any(pattern in device_lower for pattern in ['stereo mix', 'speakers', 'output']):
-                        continue
+                # Skip highly problematic ones
+                if any(pattern in device_lower for pattern in ['stereo mix', 'speakers', 'output']):
+                    continue
 
-                    selected_device = device_name
-                    selected_index = i
-                    print(f"[INFO] Selected fallback microphone: {device_name} (index: {i})")
-                    break
+                # Skip devices we've already tested
+                if any(tested[0] == i for tested in tested_devices):
+                    continue
 
-            # If still no device selected, use system default but warn
-            if selected_device is None:
-                print("[WARNING] No suitable microphone found, using system default")
-                print("[WARNING] This may cause audio feedback loops!")
-                return sr.Microphone()
+                print(f"[INFO] Testing fallback microphone: {device_name} (index: {i})")
+                if self._test_microphone_device(i, device_name):
+                    print(f"[INFO] Selected working fallback microphone: {device_name} (index: {i})")
+                    logger.info(f"Selected working fallback microphone: {device_name} (index: {i})")
+                    return sr.Microphone(device_index=i)
+                else:
+                    tested_devices.append((i, device_name, False))
 
-            # Create microphone with selected device
-            microphone = sr.Microphone(device_index=selected_index)
-            print(f"[INFO] Microphone device selected: {selected_device} (index: {selected_index})")
-
-            return microphone
+            # If still no device selected, return None
+            print("[WARNING] No working microphone found")
+            print("[WARNING] Speech recognition will not be available")
+            logger.warning("No working microphone found - speech recognition disabled")
+            if self.separate_devices:
+                print("[WARNING] Hardware isolation enabled but no working input device found!")
+            return None
 
         except Exception as e:
             print(f"[ERROR] Failed to select microphone device: {e}")
             print("[WARNING] Falling back to system default microphone")
-            return sr.Microphone()
+            logger.error(f"Failed to select microphone device: {e}, falling back to system default")
+            try:
+                # Test the default microphone
+                if self._test_microphone_device(None, "Default Microphone"):
+                    return sr.Microphone()
+                else:
+                    return None
+            except:
+                return None
+
+    def _test_microphone_device(self, device_index, device_name) -> bool:
+        """Test if a microphone device actually works."""
+        try:
+            mic = sr.Microphone(device_index=device_index) if device_index is not None else sr.Microphone()
+            with mic as source:
+                recognizer = sr.Recognizer()
+                recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                # Try a very short listen to test if device works
+                try:
+                    audio = recognizer.listen(source, timeout=0.5, phrase_time_limit=0.5)
+                    return True
+                except sr.WaitTimeoutError:
+                    # Timeout is expected and means the device works
+                    return True
+                except Exception as e:
+                    if "'NoneType' object has no attribute 'close'" in str(e):
+                        return False
+                    # Other errors might be temporary, so allow them
+                    return True
+        except Exception as e:
+            if "'NoneType' object has no attribute 'close'" in str(e):
+                return False
+            return False
 
     def _load_config(self, config_path: str = None) -> dict:
         """Load configuration."""
@@ -219,14 +302,22 @@ class EnhancedSpeechRecognizer:
     def initialize_engines(self):
         """Initialize available speech recognition engines."""
         # Test Google Speech Recognition
-        try:
-            with self.microphone as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            self.google_available = True
-            print("[INFO] Google Speech Recognition: Available")
-        except Exception as e:
+        if self.microphone is None:
             self.google_available = False
-            print(f"[WARNING] Google Speech Recognition: Failed - {e}")
+            print("[WARNING] No microphone available, Google ASR disabled")
+        else:
+            try:
+                with self.microphone as source:
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                self.google_available = True
+                print("[INFO] Google Speech Recognition: Available")
+            except Exception as e:
+                self.google_available = False
+                print(f"[WARNING] Google Speech Recognition: Failed - {e}")
+                # If microphone fails, disable it
+                if "'NoneType' object has no attribute 'close'" in str(e):
+                    print("[WARNING] Microphone appears to be invalid, disabling microphone")
+                    self.microphone = None
 
         # Initialize Vosk models for all supported languages
         vosk_models_config = self.language_config.get('vosk_models', {})
@@ -293,6 +384,10 @@ class EnhancedSpeechRecognizer:
 
     def _setup_recognizer(self):
         """Configure the recognizer with current settings."""
+        if self.microphone is None:
+            print("[WARNING] No microphone available, skipping calibration")
+            return
+
         sr_config = self.config
         
         # Energy threshold settings
@@ -316,10 +411,18 @@ class EnhancedSpeechRecognizer:
             print("[WARNING] Already listening")
             return
 
+        if self.push_to_talk_mode:
+            print("[INFO] Push-to-talk mode enabled - use start_push_to_talk() to begin listening")
+            return False
+
         self.initialize_engines()
         self._setup_recognizer()
 
-        if not self.google_available and not self.vosk_available:
+        if self.microphone is None:
+            print("[ERROR] No microphone available!")
+            return False
+
+        if not self.google_available and not self.vosk_available and not self.ml_asr_available:
             print("[ERROR] No speech recognition engines available!")
             return False
 
@@ -327,28 +430,31 @@ class EnhancedSpeechRecognizer:
         self.is_listening = True
 
         # Diagnostic logging for microphone access
-        print("[DEBUG] Checking microphone availability...")
-        try:
-            # List available microphones
-            mics = sr.Microphone.list_microphone_names()
-            print(f"[DEBUG] Available microphones: {len(mics)}")
-            for i, mic in enumerate(mics):
-                print(f"[DEBUG]  {i}: {mic}")
+        if self.microphone is not None:
+            print("[DEBUG] Checking microphone availability...")
+            try:
+                # List available microphones
+                mics = sr.Microphone.list_microphone_names()
+                print(f"[DEBUG] Available microphones: {len(mics)}")
+                for i, mic in enumerate(mics):
+                    print(f"[DEBUG]  {i}: {mic}")
 
-            # Test microphone access
-            print("[DEBUG] Testing microphone access...")
-            with self.microphone as source:
-                print("[DEBUG] Microphone opened successfully")
-                # Try a quick listen test
-                try:
-                    audio = self.recognizer.listen(source, timeout=1, phrase_time_limit=1)
-                    print("[DEBUG] Microphone listen test successful")
-                except sr.WaitTimeoutError:
-                    print("[DEBUG] Microphone listen test timed out (expected)")
-                except Exception as e:
-                    print(f"[DEBUG] Microphone listen test failed: {e}")
-        except Exception as e:
-            print(f"[DEBUG] Microphone diagnostic failed: {e}")
+                # Test microphone access
+                print("[DEBUG] Testing microphone access...")
+                with self.microphone as source:
+                    print("[DEBUG] Microphone opened successfully")
+                    # Try a quick listen test
+                    try:
+                        audio = self.recognizer.listen(source, timeout=1, phrase_time_limit=1)
+                        print("[DEBUG] Microphone listen test successful")
+                    except sr.WaitTimeoutError:
+                        print("[DEBUG] Microphone listen test timed out (expected)")
+                    except Exception as e:
+                        print(f"[DEBUG] Microphone listen test failed: {e}")
+            except Exception as e:
+                print(f"[DEBUG] Microphone diagnostic failed: {e}")
+        else:
+            print("[DEBUG] No microphone available, skipping diagnostic")
 
         try:
             # Start background listening
@@ -371,6 +477,30 @@ class EnhancedSpeechRecognizer:
         """Handle incoming audio data with fallback recognition."""
         callback_start = time.time()
 
+        # Strict listen-before-speak protocol: halt TTS immediately when speech detected
+        if self.tts:
+            self.tts.halt()
+
+        # Voice Activity Detection to filter out noise
+        if self.vad:
+            audio_data = audio.get_raw_data(convert_rate=16000, convert_width=2)
+            audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
+            frame_length = 160  # 10ms at 16kHz
+            speech_frames = 0
+            total_frames = len(audio_np) // frame_length
+
+            for i in range(0, min(len(audio_np) - frame_length, total_frames * frame_length), frame_length):
+                frame = audio_np[i:i+frame_length]
+                frame_bytes = (frame * 32767).astype(np.int16).tobytes()
+                if self.vad.is_speech(frame_bytes, 16000):
+                    speech_frames += 1
+
+            # Require at least 30% speech frames to proceed
+            speech_ratio = speech_frames / total_frames if total_frames > 0 else 0
+            if speech_ratio < 0.3:
+                logger.debug(f"Insufficient speech detected (ratio: {speech_ratio:.2f}), ignoring")
+                return
+
         try:
             text = self._recognize_speech(audio)
             if text and text.strip():
@@ -381,6 +511,15 @@ class EnhancedSpeechRecognizer:
                 # Diagnostic logging for feedback loop detection
                 print(f"[DEBUG] Recognized text: '{original_text}' (length: {len(original_text)})")
                 logger.info(f"Audio processed, recognized text: '{original_text}'")
+
+                # Check for potential feedback loop indicators
+                if len(original_text.strip()) < 5:
+                    logger.warning(f"Very short recognized text detected: '{original_text}' - possible feedback loop")
+                elif original_text.lower().count(' ') < 1 and len(original_text) > 20:
+                    logger.warning(f"Long single-word text detected: '{original_text}' - possible feedback loop")
+                elif any(phrase in original_text.lower() for phrase in ['jarvis', 'open', 'close', 'volume', 'chrome', 'edge']):
+                    # Common command words - check if repeated quickly
+                    logger.debug(f"Command-like text detected: '{original_text}' - monitoring for feedback")
 
                 # Apply text correction if available
                 corrected_text = original_text
@@ -635,6 +774,17 @@ class EnhancedSpeechRecognizer:
                             self.recognition_stats['fallback_count'] += 1
                         logger.info(f"Vosk ASR successful (fallback={fallback_used}): '{text}'")
                         return text
+                    else:
+                        fallback_used = True
+
+                # Final fallback to PyAudio with advanced filtering
+                if PYAUDIO_AVAILABLE:
+                    text = self._pyaudio_recognize(audio)
+                    if text:
+                        if fallback_used:
+                            self.recognition_stats['fallback_count'] += 1
+                        logger.info(f"PyAudio fallback successful (fallback={fallback_used}): '{text}'")
+                        return text
 
             # Specific engine mode
             elif self.current_engine == 'google' and self.google_available:
@@ -815,17 +965,97 @@ class EnhancedSpeechRecognizer:
             print(f"[ERROR] ML ASR recognition failed: {e}")
             return None
 
+    def _pyaudio_recognize(self, audio: sr.AudioData) -> Optional[str]:
+        """Fallback recognition using PyAudio with advanced filtering."""
+        if not PYAUDIO_AVAILABLE:
+            return None
+
+        try:
+            start_time = time.time()
+
+            # Convert to numpy array for processing
+            audio_data = audio.get_raw_data(convert_rate=16000, convert_width=2)
+            audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
+
+            # Apply advanced echo cancellation and noise reduction
+            if self.echo_cancellation_enabled:
+                # Simple high-pass filter (cutoff ~100Hz)
+                from scipy import signal
+                try:
+                    b, a = signal.butter(4, 100/(16000/2), 'high')
+                    audio_np = signal.filtfilt(b, a, audio_np)
+                except ImportError:
+                    print("[WARNING] SciPy not available for echo cancellation")
+
+            # Apply noise gate
+            if self.noise_gate_enabled:
+                # Simple noise gate: attenuate low-energy frames
+                rms = np.sqrt(np.mean(audio_np**2))
+                if rms < self.noise_gate_threshold:
+                    audio_np *= 0.1  # Reduce volume significantly
+                    logger.debug(f"Applied noise gate (RMS: {rms:.4f} < {self.noise_gate_threshold})")
+
+            # Voice Activity Detection
+            if self.vad:
+                # Check if audio contains speech
+                frame_length = 160  # 10ms at 16kHz
+                speech_frames = 0
+                total_frames = len(audio_np) // frame_length
+
+                for i in range(0, len(audio_np) - frame_length, frame_length):
+                    frame = audio_np[i:i+frame_length]
+                    frame_bytes = (frame * 32767).astype(np.int16).tobytes()
+                    if self.vad.is_speech(frame_bytes, 16000):
+                        speech_frames += 1
+
+                # Require at least 50% speech frames
+                if speech_frames / total_frames < 0.5:
+                    print("[DEBUG] PyAudio: Insufficient speech detected")
+                    return None
+
+            # Use speech_recognition with processed audio
+            # Create new AudioData with filtered audio
+            filtered_audio_data = (audio_np * 32767).astype(np.int16).tobytes()
+            filtered_audio = sr.AudioData(filtered_audio_data, 16000, 2)
+
+            # Try Google recognition on filtered audio
+            if self.google_available:
+                try:
+                    text = self.recognizer.recognize_google(filtered_audio)
+                    elapsed = time.time() - start_time
+                    print(f"[INFO] PyAudio fallback successful: '{text}' in {elapsed:.3f}s")
+                    return text
+                except sr.UnknownValueError:
+                    pass
+
+            # Fallback to Vosk if available
+            if self.vosk_available:
+                text = self._vosk_recognize(filtered_audio)
+                if text:
+                    elapsed = time.time() - start_time
+                    print(f"[INFO] PyAudio+Vosk successful: '{text}' in {elapsed:.3f}s")
+                    return text
+
+            return None
+        except Exception as e:
+            print(f"[ERROR] PyAudio recognition failed: {e}")
+            return None
+
     def listen_once(self, timeout: float = 5, phrase_time_limit: float = 5) -> str:
         """Blocking listen for a single utterance."""
+        if self.microphone is None:
+            print("[ERROR] No microphone available")
+            return ""
+
         try:
             with self.microphone as source:
                 print("[INFO] Listening... (speak now)")
                 audio = self.recognizer.listen(
-                    source, 
-                    timeout=timeout, 
+                    source,
+                    timeout=timeout,
                     phrase_time_limit=phrase_time_limit
                 )
-            
+
             text = self._recognize_speech(audio)
             return text if text else ""
         except sr.WaitTimeoutError:
@@ -1031,10 +1261,57 @@ class EnhancedSpeechRecognizer:
         """Stop background listening."""
         if self.stop_listening and callable(self.stop_listening):
             self.stop_listening(wait_for_stop=False)
-        
+
         self.is_listening = False
         print("[INFO] Speech recognition stopped")
-    
+
+    def enable_push_to_talk(self):
+        """Enable push-to-talk mode."""
+        self.push_to_talk_mode = True
+        if self.is_listening:
+            self.stop()
+        print("[INFO] Push-to-talk mode enabled")
+
+    def disable_push_to_talk(self):
+        """Disable push-to-talk mode."""
+        self.push_to_talk_mode = False
+        print("[INFO] Push-to-talk mode disabled")
+
+    def start_push_to_talk(self, timeout: float = 10):
+        """Start listening for a single utterance in push-to-talk mode."""
+        if self.is_listening:
+            print("[WARNING] Already listening")
+            return
+
+        self.initialize_engines()
+        self._setup_recognizer()
+
+        if self.microphone is None:
+            print("[ERROR] No microphone available!")
+            return
+
+        if not self.google_available and not self.vosk_available and not self.ml_asr_available:
+            print("[ERROR] No speech recognition engines available!")
+            return
+
+        print("[INFO] Push-to-talk: Listening...")
+        self.is_listening = True
+
+        try:
+            with self.microphone as source:
+                audio = self.recognizer.listen(source, timeout=timeout)
+            self._audio_callback(self.recognizer, audio)
+        except sr.WaitTimeoutError:
+            print("[INFO] Push-to-talk timeout")
+        except Exception as e:
+            print(f"[ERROR] Push-to-talk failed: {e}")
+        finally:
+            self.is_listening = False
+
+    def stop_push_to_talk(self):
+        """Stop push-to-talk listening."""
+        self.stop()
+
     def __del__(self):
         """Cleanup resources."""
         self.stop()

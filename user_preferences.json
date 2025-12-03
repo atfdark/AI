@@ -1,7 +1,10 @@
 {
   "favorite_apps": [
     "chrome",
-    "edge  open edge"
+    "edge  open edge",
+    "github on chrome",
+    "github desktop",
+    "edge"
   ],
   "preferred_search_engine": "google",
   "preferred_voice_gender": "female",
@@ -10,10 +13,10 @@
   "location_context": "current",
   "custom_commands": {},
   "last_used_entities": {
-    "query": "python",
+    "query": "what is the",
     "topic": "deep learning",
     "location": "current",
-    "application": "edge  open edge",
+    "application": "edge",
     "engine": "google",
     "text": "yes sir"
   }

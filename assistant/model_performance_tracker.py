@@ -37,6 +37,23 @@ except ImportError:
     def log_ml_training(*args, **kwargs):
         pass
 
+# Import regression metrics
+try:
+    from .regression_metrics import mean_absolute_error, mean_squared_error, root_mean_squared_error, r2_score
+except ImportError:
+    # Fallback if regression_metrics is not available
+    def mean_absolute_error(*args, **kwargs):
+        raise ImportError("regression_metrics module not available")
+
+    def mean_squared_error(*args, **kwargs):
+        raise ImportError("regression_metrics module not available")
+
+    def root_mean_squared_error(*args, **kwargs):
+        raise ImportError("regression_metrics module not available")
+
+    def r2_score(*args, **kwargs):
+        raise ImportError("regression_metrics module not available")
+
 
 class ModelPerformanceTracker:
     """Tracks performance metrics for ML models over time."""
@@ -85,10 +102,17 @@ class ModelPerformanceTracker:
         except Exception as e:
             logger.error(f"Failed to save tracking data: {e}")
 
-    def track_prediction(self, model_name: str, input_text: str, prediction: str,
-                        confidence: float, true_label: Optional[str] = None,
+    def track_prediction(self, model_name: str, input_text: str, prediction: Any,
+                        confidence: float, true_label: Optional[Any] = None,
                         processing_time: float = 0.0, metadata: Optional[Dict[str, Any]] = None):
         """Track a model prediction with optional ground truth."""
+
+        # For classification, 'correct' is boolean; for regression, it's None
+        correct = None
+        if true_label is not None:
+            if isinstance(true_label, str) and isinstance(prediction, str):
+                correct = prediction == true_label
+            # For regression, correct remains None
 
         prediction_record = {
             'timestamp': datetime.now().isoformat(),
@@ -97,7 +121,7 @@ class ModelPerformanceTracker:
             'prediction': prediction,
             'confidence': confidence,
             'true_label': true_label,
-            'correct': true_label is not None and prediction == true_label,
+            'correct': correct,
             'processing_time': processing_time,
             'metadata': metadata or {}
         }
@@ -128,6 +152,40 @@ class ModelPerformanceTracker:
 
         self._save_tracking_data()
 
+    def _calculate_regression_metrics(self, records: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Calculate regression metrics from prediction records."""
+        # Filter records with numeric true labels and predictions
+        regression_records = []
+        for record in records:
+            try:
+                true_val = record.get('true_label')
+                pred_val = record.get('prediction')
+                if true_val is not None and pred_val is not None:
+                    # Convert to float if possible
+                    true_val = float(true_val)
+                    pred_val = float(pred_val)
+                    regression_records.append((true_val, pred_val))
+            except (ValueError, TypeError):
+                continue
+
+        if len(regression_records) < 2:
+            return {}
+
+        y_true, y_pred = zip(*regression_records)
+        y_true = list(y_true)
+        y_pred = list(y_pred)
+
+        try:
+            return {
+                'mae': mean_absolute_error(y_true, y_pred),
+                'mse': mean_squared_error(y_true, y_pred),
+                'rmse': root_mean_squared_error(y_true, y_pred),
+                'r2': r2_score(y_true, y_pred)
+            }
+        except Exception as e:
+            logger.warning(f"Failed to calculate regression metrics: {e}")
+            return {}
+
     def get_model_performance(self, model_name: str, days: int = 30) -> Dict[str, Any]:
         """Get performance statistics for a model over the specified period."""
 
@@ -150,6 +208,9 @@ class ModelPerformanceTracker:
         total_predictions = len(records)
         correct_predictions = sum(1 for r in records if r.get('correct', False))
         accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
+
+        # Calculate regression metrics if applicable
+        regression_metrics = self._calculate_regression_metrics(records)
 
         confidences = [r['confidence'] for r in records if 'confidence' in r]
         processing_times = [r['processing_time'] for r in records if 'processing_time' in r]
@@ -220,6 +281,10 @@ class ModelPerformanceTracker:
             'model_version': self.model_versions.get(model_name, {}).get('current_version', 'unknown'),
             'last_updated': self.model_versions.get(model_name, {}).get('last_updated', 'unknown')
         }
+
+        # Add regression metrics if available
+        if regression_metrics:
+            performance_stats['regression_metrics'] = regression_metrics
 
         return performance_stats
 
@@ -345,6 +410,16 @@ class ModelPerformanceTracker:
             report_lines.append(f"- Max: {time_stats['max']:.3f}s")
             report_lines.append("")
 
+            # Add regression metrics if available
+            if 'regression_metrics' in perf_data:
+                reg_metrics = perf_data['regression_metrics']
+                report_lines.append("## Regression Metrics")
+                report_lines.append(f"- Mean Absolute Error (MAE): {reg_metrics.get('mae', 'N/A'):.4f}")
+                report_lines.append(f"- Mean Squared Error (MSE): {reg_metrics.get('mse', 'N/A'):.4f}")
+                report_lines.append(f"- Root Mean Squared Error (RMSE): {reg_metrics.get('rmse', 'N/A'):.4f}")
+                report_lines.append(f"- R² Score: {reg_metrics.get('r2', 'N/A'):.4f}")
+                report_lines.append("")
+
             report_lines.append("## Accuracy by Confidence Level")
             for bin_data in perf_data['accuracy_by_confidence']:
                 report_lines.append(f"- {bin_data['confidence_range']}: {bin_data['accuracy']:.3f} ({bin_data['count']} predictions)")
@@ -459,8 +534,8 @@ def get_performance_tracker() -> ModelPerformanceTracker:
         _performance_tracker = ModelPerformanceTracker()
     return _performance_tracker
 
-def track_model_prediction(model_name: str, input_text: str, prediction: str,
-                          confidence: float, true_label: Optional[str] = None,
+def track_model_prediction(model_name: str, input_text: str, prediction: Any,
+                          confidence: float, true_label: Optional[Any] = None,
                           processing_time: float = 0.0, metadata: Optional[Dict[str, Any]] = None):
     """Convenience function to track model predictions."""
     get_performance_tracker().track_prediction(

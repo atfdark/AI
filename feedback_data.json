@@ -256,7 +256,143 @@
       "user_comment": null,
       "session_id": "test_session_2",
       "context_data": null
+    },
+    {
+      "timestamp": 1764759059.1427479,
+      "feedback_type": "general_rating",
+      "original_input": "Chrome is now open",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "chrome is now open"
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "that commands didn't Word as expected.",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759077.6838984,
+      "feedback_type": "general_rating",
+      "original_input": "open file explorer",
+      "original_intent": "open_application",
+      "original_entities": {
+        "application": "file explorer"
+      },
+      "original_confidence": 0.9,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "i know how 2 open fire like explorer.",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759111.570069,
+      "feedback_type": "general_rating",
+      "original_input": "we came cover dust 2",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "we came cover dust 2"
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "what do you get 2 open that commands didn't Word as expected.",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759213.6633542,
+      "feedback_type": "general_rating",
+      "original_input": "here's what i found about github.",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "here's what i found about github."
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "search for",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759251.274086,
+      "feedback_type": "general_rating",
+      "original_input": "here's what i found about sis' graduate school of technology.",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "here's what i found about sis' graduate school of technology."
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "that command didn't Word as expected.",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759269.1986005,
+      "feedback_type": "general_rating",
+      "original_input": "for fies gradu",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "for fies gradu"
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "search for",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759292.5790067,
+      "feedback_type": "general_rating",
+      "original_input": "where i am",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "where i am"
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "what's my location",
+      "session_id": "session_1764759011",
+      "context_data": null
+    },
+    {
+      "timestamp": 1764759311.6480155,
+      "feedback_type": "general_rating",
+      "original_input": "location",
+      "original_intent": "unknown",
+      "original_entities": {
+        "text": "location"
+      },
+      "original_confidence": 0.0,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": "location",
+      "session_id": "session_1764759011",
+      "context_data": null
     }
   ],
-  "last_updated": 1764596205.5021825
+  "last_updated": 1764759312.3624887
 }

@@ -20,21 +20,21 @@
     }
   },
   "speech_recognition": {
-    "preferred_engine": "auto",
-    "vosk_model_path": null,
-    "noise_reduction": true,
-    "energy_threshold": 300,
-    "dynamic_energy_threshold": true,
-    "ml_asr": {
-      "enabled": true,
-      "model": "whisper",
-      "model_size": "base",
-      "offline": true,
-      "device": "cpu",
-      "language": null,
-      "fine_tune_data_path": null
-    }
-  },
+   "preferred_engine": "auto",
+   "vosk_model_path": null,
+   "noise_reduction": true,
+   "energy_threshold": 300,
+   "dynamic_energy_threshold": true,
+   "ml_asr": {
+     "enabled": true,
+     "model": "whisper",
+     "model_size": "base",
+     "offline": true,
+     "device": "cpu",
+     "language": null,
+     "fine_tune_data_path": "whisper_training_data.json"
+   }
+ },
   "newsapi": {
     "api_key": "YOUR_NEWSAPI_KEY_HERE"
   },
