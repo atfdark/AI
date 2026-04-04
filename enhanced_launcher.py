@@ -4,7 +4,10 @@
 import os
 import sys
 import argparse
+import importlib.util
+import json
 from pathlib import Path
+
 
 def main():
     """Enhanced launcher with multiple modes and options."""
@@ -18,6 +21,8 @@ EXAMPLES:
   python enhanced_launcher.py --config-wizard    # Interactive setup
   python enhanced_launcher.py --test             # Run tests
   python enhanced_launcher.py --demo             # Interactive demo
+  python enhanced_launcher.py --status           # Show implementation status
+  python enhanced_launcher.py --agent-test       # Run agent-layer diagnostics
         """
     )
     
@@ -43,6 +48,18 @@ EXAMPLES:
         '--demo', '-d',
         action='store_true',
         help='Run interactive demo of features'
+    )
+
+    parser.add_argument(
+        '--status',
+        action='store_true',
+        help='Show implementation and dependency status, then exit'
+    )
+
+    parser.add_argument(
+        '--agent-test',
+        action='store_true',
+        help='Run Jarvis agent-layer diagnostics and exit'
     )
     
     parser.add_argument(
@@ -81,15 +98,27 @@ EXAMPLES:
         print("Running Interactive Demo...")
         run_interactive_demo()
         return
+
+    # Status report mode
+    if args.status:
+        print("Gathering implementation status...")
+        show_implementation_status(config_path=args.config)
+        return
+
+    # Agent diagnostics mode
+    if args.agent_test:
+        print("Running agent-layer diagnostics...")
+        run_agent_diagnostics(config_path=args.config)
+        return
     
     # Classic mode (original)
     if args.classic:
-        print("📜 Launching Classic Mode...")
+        print("Launching Classic Mode...")
         try:
             from assistant import run
             run()
         except ImportError as e:
-            print(f"❌ Error importing classic mode: {e}")
+            print(f"Error importing classic mode: {e}")
             print("Make sure you're in the correct directory.")
         return
     
@@ -120,6 +149,193 @@ EXAMPLES:
         print("2. Ensure all dependencies are installed: pip install -r requirements.txt")
         print("3. Run configuration wizard: python enhanced_launcher.py --config-wizard")
         print("4. Try classic mode: python enhanced_launcher.py --classic")
+
+
+def _is_module_available(module_name: str | list[str] | tuple[str, ...]) -> bool:
+    """Check whether a Python module (or any fallback module) is resolvable."""
+    if isinstance(module_name, (list, tuple)):
+        return any(importlib.util.find_spec(name) is not None for name in module_name)
+    return importlib.util.find_spec(module_name) is not None
+
+
+def _safe_load_config(config_path: str) -> tuple[dict, str]:
+    """Load launcher configuration and return (data, error_message)."""
+    resolved_path = Path(config_path)
+    if not resolved_path.is_absolute():
+        resolved_path = Path.cwd() / resolved_path
+
+    try:
+        with open(resolved_path, 'r', encoding='utf-8') as handle:
+            return json.load(handle), ""
+    except Exception as exc:
+        return {}, str(exc)
+
+
+def show_implementation_status(config_path: str = 'config.json'):
+    """Print a concise implementation and dependency status report."""
+    print("\nIMPLEMENTATION STATUS REPORT")
+    print("=" * 50)
+
+    root_dir = Path(__file__).resolve().parent
+    assistant_dir = root_dir / 'assistant'
+
+    implemented_modules = set()
+    if assistant_dir.exists():
+        implemented_modules = {
+            module_path.stem
+            for module_path in assistant_dir.glob('*.py')
+            if module_path.name != '__init__.py'
+        }
+
+    feature_map = {
+        'Core runtime': ['main', 'main_enhanced', 'actions', 'tts'],
+        'Speech and parsing': ['speech', 'speech_enhanced', 'parser', 'parser_enhanced'],
+        'Dialogue and feedback': ['dialogue_state_tracker', 'feedback_system', 'usage_analytics'],
+        'ML and optimization': ['model_optimizer', 'model_performance_tracker', 'regression_metrics'],
+        'Data pipeline and reporting': ['data_collection_pipeline', 'automated_reporting', 'performance_dashboard'],
+        'NLP extras': ['ner_custom', 'text_corrector', 'error_analysis']
+    }
+
+    print("\nImplemented feature groups:")
+    for group, required_modules in feature_map.items():
+        present = [name for name in required_modules if name in implemented_modules]
+        status = "[OK]" if len(present) == len(required_modules) else "[PARTIAL]"
+        print(f"  {status} {group}: {len(present)}/{len(required_modules)} modules")
+
+    config_data, config_error = _safe_load_config(config_path)
+    print("\nConfiguration snapshot:")
+    if config_error:
+        print(f"  [WARNING] Could not load config '{config_path}': {config_error}")
+    else:
+        apps = config_data.get('apps', {})
+        wake_word_cfg = config_data.get('wake_word', {})
+        language_cfg = config_data.get('language', {})
+        speech_cfg = config_data.get('speech_recognition', {})
+
+        print(f"  [OK] Config loaded from: {config_path}")
+        print(f"  [OK] Apps configured: {len(apps)}")
+        print(f"  [OK] Wake word enabled: {wake_word_cfg.get('enabled', False)}")
+        print(f"  [OK] Supported languages: {language_cfg.get('supported', ['en'])}")
+        print(f"  [OK] Preferred speech engine: {speech_cfg.get('preferred_engine', 'auto')}")
+
+    dependency_map = {
+        'SpeechRecognition': 'speech_recognition',
+        'Vosk': 'vosk',
+        'PyAudio': ['pyaudio', 'pyaudiowpatch'],
+        'WebRTC VAD': 'webrtcvad',
+        'NumPy': 'numpy',
+        'Scikit-learn': 'sklearn',
+        'spaCy': 'spacy',
+        'NLTK': 'nltk',
+        'PyAutoGUI': 'pyautogui',
+        'PyTTSx3': 'pyttsx3',
+        'News API': 'newsapi',
+        'Wikipedia': 'wikipedia',
+        'PyJokes': 'pyjokes',
+        'YT-DLP': 'yt_dlp',
+        'Geocoder': 'geocoder',
+        'psutil': 'psutil',
+        'PyWin32': 'win32api',
+        'Transformers': 'transformers',
+        'Torch': 'torch',
+        'OpenAI Whisper': 'whisper'
+    }
+
+    print("\nDependency availability:")
+    for name, module_name in dependency_map.items():
+        state = "available" if _is_module_available(module_name) else "missing"
+        marker = "[OK]" if state == "available" else "[MISSING]"
+        print(f"  {marker} {name}: {state}")
+
+    test_files = list(root_dir.glob('test_*.py'))
+    print("\nTesting coverage snapshot:")
+    print(f"  [OK] Test scripts detected: {len(test_files)}")
+    print("\nTip: Run 'python enhanced_launcher.py --test' for runtime checks.")
+
+
+def run_agent_diagnostics(config_path: str = 'config.json'):
+    """Run basic diagnostics for the new agent layer without starting voice loop."""
+    print("\nAGENT LAYER DIAGNOSTICS")
+    print("=" * 50)
+
+    try:
+        from assistant.agent_runtime import AgentRuntime
+
+        # Import Actions lazily; if unavailable due missing desktop deps,
+        # use a lightweight fallback so agent diagnostics can still run.
+        try:
+            from assistant.actions import Actions
+            actions = Actions(config_path=config_path)
+        except Exception:
+            class Actions:
+                def __init__(self, config_path=None):
+                    self.config_path = config_path
+
+                def launch_app(self, app_name):
+                    return False
+
+                def open_url(self, url):
+                    return False
+
+                def perform_search(self, query):
+                    return f"search unavailable for {query}"
+
+                def take_screenshot(self):
+                    return None
+
+                def volume_up(self, steps=2):
+                    return None
+
+                def volume_down(self, steps=2):
+                    return None
+
+                def get_weather(self, location):
+                    return f"weather unavailable for {location}"
+
+                def get_wikipedia_summary(self, topic):
+                    return f"wikipedia unavailable for {topic}"
+
+                def fetch_news(self):
+                    return "news unavailable"
+
+                def create_todo_list(self, list_name):
+                    return True
+
+                def add_todo_task(self, list_name, task):
+                    return True
+
+                def get_todo_lists(self):
+                    return {}
+
+            actions = Actions(config_path=config_path)
+
+        runtime = AgentRuntime(actions=actions, tts=None, config_path=config_path)
+        health = runtime.health_check()
+
+        print(f"  [OK] Agent enabled: {health.get('enabled')}")
+        print(f"  [OK] Registered tools: {health.get('tool_count')}")
+        print(f"  [OK] Ollama enabled: {health.get('ollama_enabled')}")
+        print(f"  [OK] Ollama model: {health.get('ollama_model')}")
+
+        # Quick dry-run against a synthetic unknown command
+        class DummyResult:
+            def __init__(self):
+                class DummyIntent:
+                    value = 'unknown'
+                self.intent = DummyIntent()
+                self.confidence = 0.0
+                self.parameters = {'text': 'open chrome and search python docs'}
+
+        dry_run = runtime.process(
+            text='open chrome and search python docs',
+            parsed_result=DummyResult(),
+            context={'source': 'agent_test'}
+        )
+        print(f"  [OK] Dry run handled: {dry_run.get('handled')}")
+        print(f"  [OK] Dry run success: {dry_run.get('success')}")
+        print(f"  [OK] Dry run response: {dry_run.get('response', '')}")
+    except Exception as exc:
+        print(f"  [FAIL] Agent diagnostics failed: {exc}")
 
 
 def run_comprehensive_tests():
@@ -189,6 +405,7 @@ def run_comprehensive_tests():
         tests_passed += 1
     except Exception as e:
         print(f"  [FAIL] Configuration failed: {e}")
+
     
     # Test 5: Speech recognition engines
     tests_total += 1

@@ -1,0 +1,11 @@
+{
+  "backup_name": "backup_20260404_143822",
+  "created_at": "2026-04-04T14:38:22.349895",
+  "files_backed_up": [
+    "feedback_data.json",
+    "learning_data.json",
+    "conversation_history.json"
+  ],
+  "backup_size": 2065,
+  "compression": "gzip"
+}

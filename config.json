@@ -75,5 +75,29 @@
     "min_confidence_threshold": 0.6,
     "domain_specific_enabled": true,
     "learning_enabled": true
+  },
+  "agent": {
+    "enabled": true,
+    "enable_ollama": true,
+    "ollama_model": "phi3:mini",
+    "ollama_url": "http://localhost:11434/api/generate",
+    "low_confidence_threshold": 0.55,
+    "speak_responses": true
+  },
+  "safety_policy": {
+    "require_confirmation": [
+      "delete_file",
+      "shutdown_system",
+      "restart_system"
+    ],
+    "blocked_tools": [],
+    "blocked_path_keywords": [
+      "windows",
+      "system32",
+      "program files"
+    ],
+    "rate_limit": {
+      "calls_per_minute": 60
+    }
   }
 }

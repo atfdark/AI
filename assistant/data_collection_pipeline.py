@@ -41,6 +41,26 @@ try:
     from .logger import get_logger
     logger = get_logger('data_pipeline')
 except ImportError:
+    # Fallbacks keep the pipeline operational in limited environments.
+    def get_feedback_collector():
+        return None
+
+    def get_usage_tracker():
+        return None
+
+    def get_performance_monitor():
+        return None
+
+    def get_performance_tracker():
+        return None
+
+    class ModelRetrainingTrigger:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def check_and_trigger_retraining(self, _model_name: str):
+            return {"retraining_needed": False}
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('data_pipeline')
 

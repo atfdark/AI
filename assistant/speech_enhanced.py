@@ -9,11 +9,22 @@ import numpy as np
 # For echo cancellation and advanced audio processing
 try:
     import pyaudio
-    import webrtcvad
     PYAUDIO_AVAILABLE = True
 except ImportError:
-    PYAUDIO_AVAILABLE = False
-    print("[WARNING] PyAudio or webrtcvad not available, advanced audio processing disabled")
+    try:
+        # Python 3.14 on Windows often uses this wheel instead of PyAudio.
+        import pyaudiowpatch as pyaudio
+        PYAUDIO_AVAILABLE = True
+    except ImportError:
+        PYAUDIO_AVAILABLE = False
+        print("[WARNING] PyAudio not available, PyAudio fallback path disabled")
+
+try:
+    import webrtcvad
+    WEBRTCVAD_AVAILABLE = True
+except ImportError:
+    WEBRTCVAD_AVAILABLE = False
+    print("[WARNING] webrtcvad not available, VAD filtering disabled")
 
 # Import TextCorrector for ASR error correction
 try:
@@ -103,7 +114,7 @@ class EnhancedSpeechRecognizer:
 
         self.pyaudio_stream = None
         self.vad = None
-        if PYAUDIO_AVAILABLE:
+        if PYAUDIO_AVAILABLE and WEBRTCVAD_AVAILABLE:
             try:
                 self.vad = webrtcvad.Vad(3)  # Aggressiveness level 0-3
                 print("[INFO] Voice Activity Detection initialized")

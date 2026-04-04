@@ -2202,5 +2202,18 @@
       "processing_time": 0.02,
       "metadata": {}
     }
+  ],
+  "global_test_model": [
+    {
+      "timestamp": "2026-04-04T14:42:37.733649",
+      "model_name": "global_test_model",
+      "input_text": "global test",
+      "prediction": 5.2,
+      "confidence": 0.8,
+      "true_label": 5.0,
+      "correct": null,
+      "processing_time": 0.1,
+      "metadata": {}
+    }
   ]
 }

@@ -13,11 +13,11 @@
   "location_context": "current",
   "custom_commands": {},
   "last_used_entities": {
-    "query": "what is the",
+    "query": "python",
     "topic": "deep learning",
     "location": "current",
-    "application": "edge",
+    "application": "chrome",
     "engine": "google",
-    "text": "yes sir"
+    "text": "what about machine learning"
   }
 }

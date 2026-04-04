@@ -1,0 +1,1 @@
+{"timestamp": "2026-04-04T14:42:37.707442", "level": "INFO", "logger": "assistant.insufficient_data_model", "message": "ML Event: prediction", "module": "logger", "function": "log_ml_event", "line": 122, "event_type": "prediction", "input_text": "test input", "prediction": 5.0, "confidence": 0.9, "processing_time_ms": 100.0}

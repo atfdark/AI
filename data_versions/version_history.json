@@ -17,6 +17,24 @@
       "data_size": 460,
       "record_count": 2,
       "metadata": {}
+    },
+    {
+      "version_id": "test_data_20260404T143050218348_4995ac35",
+      "dataset_name": "test_data",
+      "created_at": "2026-04-04T14:30:50.218348",
+      "data_hash": "4995ac35",
+      "data_size": 460,
+      "record_count": 2,
+      "metadata": {}
+    },
+    {
+      "version_id": "test_data_20260404T143822299547_3c9fc1d2",
+      "dataset_name": "test_data",
+      "created_at": "2026-04-04T14:38:22.299547",
+      "data_hash": "3c9fc1d2",
+      "data_size": 461,
+      "record_count": 2,
+      "metadata": {}
     }
   ],
   "feedback_data": [
@@ -43,6 +61,18 @@
         "quality_score": 0.9982608289853447,
         "learning_cycle": "2025-12-01T20:05:11.670735"
       }
+    },
+    {
+      "version_id": "feedback_data_20260404T143822332637_776ea3d4",
+      "dataset_name": "feedback_data",
+      "created_at": "2026-04-04T14:38:22.332637",
+      "data_hash": "776ea3d4",
+      "data_size": 16621,
+      "record_count": 41,
+      "metadata": {
+        "quality_score": 0.9999993459050144,
+        "learning_cycle": "2026-04-04T14:38:22.332630"
+      }
     }
   ],
   "model_data": [
@@ -68,6 +98,18 @@
       "metadata": {
         "quality_score": 0.0,
         "learning_cycle": "2025-12-01T20:05:11.673051"
+      }
+    },
+    {
+      "version_id": "model_data_20260404T143822336659_c2ac83d6",
+      "dataset_name": "model_data",
+      "created_at": "2026-04-04T14:38:22.336659",
+      "data_hash": "c2ac83d6",
+      "data_size": 50780,
+      "record_count": 2,
+      "metadata": {
+        "quality_score": 0.7,
+        "learning_cycle": "2026-04-04T14:38:22.336656"
       }
     }
   ]

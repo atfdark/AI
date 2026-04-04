@@ -157,8 +157,9 @@ class Actions:
             print(f"Press key error: {e}")
 
     def take_screenshot(self, filename=None):
-        filename = filename or os.path.join(os.getcwd(), 'screenshot.png')
+        filename = filename or os.path.join(os.getcwd(), 'artifacts', 'screenshots', 'screenshot.png')
         try:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
             im = pyautogui.screenshot()
             im.save(filename)
             return filename

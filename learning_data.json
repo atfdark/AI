@@ -23,6 +23,38 @@
       "corrected_intent": "close_application",
       "confidence": 0.8,
       "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293249.5313241,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293249.5743186,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293700.916739,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293700.9626558,
+      "original_text": "close window",
+      "original_intent": "close_window",
+      "corrected_intent": "close_application",
+      "confidence": 0.8,
+      "session_id": "test_session_1"
     }
   ],
   "entity_corrections": [
@@ -56,6 +88,62 @@
     },
     {
       "timestamp": 1764596205.4678285,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    },
+    {
+      "timestamp": 1775293249.5313284,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    },
+    {
+      "timestamp": 1775293249.5743217,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    },
+    {
+      "timestamp": 1775293700.9167423,
+      "original_text": "search for python",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "intent": "search",
+      "session_id": "test_session_2"
+    },
+    {
+      "timestamp": 1775293700.962659,
       "original_text": "search for python",
       "original_entities": {
         "query": "python",
@@ -102,9 +190,53 @@
       "confidence": 0.9,
       "rating": 5,
       "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293249.5313141,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293249.5743065,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293700.9167264,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
+    },
+    {
+      "timestamp": 1775293700.962646,
+      "text": "open chrome",
+      "intent": "open_application",
+      "entities": {
+        "application": "chrome"
+      },
+      "confidence": 0.9,
+      "rating": 5,
+      "session_id": "test_session_1"
     }
   ],
   "failed_patterns": [],
   "preference_updates": [],
-  "last_updated": 1764759312.3637898
+  "last_updated": 1775293701.0160067
 }

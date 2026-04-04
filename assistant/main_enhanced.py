@@ -19,6 +19,7 @@ from .speech_enhanced import EnhancedSpeechRecognizer
 from .dialogue_state_tracker import DialogueStateTracker
 from .feedback_system import get_feedback_collector, get_online_learner, get_preference_adapter, FeedbackType, Rating, FeedbackEntry
 from .performance_monitor import get_performance_monitor, record_command_performance
+from .agent_runtime import AgentRuntime
 
 
 class VoiceAssistant:
@@ -42,12 +43,20 @@ class VoiceAssistant:
             session_timeout=dialogue_config.get('session_timeout', 1800)
         )
 
+        # Agent runtime (offline-first routing/execution layer)
+        self.agent_runtime = AgentRuntime(
+            actions=self.actions,
+            tts=self.tts,
+            config_path=self.config_path
+        )
+
         self.parser = EnhancedCommandParser(
             actions=self.actions,
             tts=self.tts,
             config_path=self.config_path,
             dialogue_tracker=self.dialogue_tracker,
-            feedback_callback=self._request_feedback
+            feedback_callback=self._request_feedback,
+            agent_runtime=self.agent_runtime
         )
         self.recognizer = EnhancedSpeechRecognizer(
             callback=self._handle_command_text,

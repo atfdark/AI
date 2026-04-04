@@ -392,7 +392,309 @@
       "user_comment": "location",
       "session_id": "session_1764759011",
       "context_data": null
+    },
+    {
+      "timestamp": 1775293249.5313141,
+      "feedback_type": "command_success",
+      "original_input": "open chrome",
+      "original_intent": "open_application",
+      "original_entities": {
+        "application": "chrome"
+      },
+      "original_confidence": 0.9,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 5,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293249.5313241,
+      "feedback_type": "intent_correction",
+      "original_input": "close window",
+      "original_intent": "close_window",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": "close_application",
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293249.5313284,
+      "feedback_type": "entity_correction",
+      "original_input": "search for python",
+      "original_intent": "search",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "original_confidence": 0.7,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_2",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293249.5743065,
+      "feedback_type": "command_success",
+      "original_input": "open chrome",
+      "original_intent": "open_application",
+      "original_entities": {
+        "application": "chrome"
+      },
+      "original_confidence": 0.9,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 5,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293249.5743186,
+      "feedback_type": "intent_correction",
+      "original_input": "close window",
+      "original_intent": "close_window",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": "close_application",
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293249.5743217,
+      "feedback_type": "entity_correction",
+      "original_input": "search for python",
+      "original_intent": "search",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "original_confidence": 0.7,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_2",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293249.62325,
+      "feedback_type": "general_rating",
+      "original_input": "test command 0",
+      "original_intent": "test",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 4,
+      "user_comment": null,
+      "session_id": "test_session_0",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775289649.6232667,
+      "feedback_type": "general_rating",
+      "original_input": "test command 1",
+      "original_intent": "test",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 4,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775286049.6232715,
+      "feedback_type": "general_rating",
+      "original_input": "test command 2",
+      "original_intent": "test",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 4,
+      "user_comment": null,
+      "session_id": "test_session_2",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293700.9167264,
+      "feedback_type": "command_success",
+      "original_input": "open chrome",
+      "original_intent": "open_application",
+      "original_entities": {
+        "application": "chrome"
+      },
+      "original_confidence": 0.9,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 5,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293700.916739,
+      "feedback_type": "intent_correction",
+      "original_input": "close window",
+      "original_intent": "close_window",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": "close_application",
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293700.9167423,
+      "feedback_type": "entity_correction",
+      "original_input": "search for python",
+      "original_intent": "search",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "original_confidence": 0.7,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_2",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293700.962646,
+      "feedback_type": "command_success",
+      "original_input": "open chrome",
+      "original_intent": "open_application",
+      "original_entities": {
+        "application": "chrome"
+      },
+      "original_confidence": 0.9,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 5,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293700.9626558,
+      "feedback_type": "intent_correction",
+      "original_input": "close window",
+      "original_intent": "close_window",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": "close_application",
+      "corrected_entities": null,
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293700.962659,
+      "feedback_type": "entity_correction",
+      "original_input": "search for python",
+      "original_intent": "search",
+      "original_entities": {
+        "query": "python",
+        "engine": "google"
+      },
+      "original_confidence": 0.7,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": {
+        "query": "python programming",
+        "engine": "google"
+      },
+      "user_rating": null,
+      "user_comment": null,
+      "session_id": "test_session_2",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775293701.0139024,
+      "feedback_type": "general_rating",
+      "original_input": "test command 0",
+      "original_intent": "test",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 4,
+      "user_comment": null,
+      "session_id": "test_session_0",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775290101.013919,
+      "feedback_type": "general_rating",
+      "original_input": "test command 1",
+      "original_intent": "test",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 4,
+      "user_comment": null,
+      "session_id": "test_session_1",
+      "context_data": null
+    },
+    {
+      "timestamp": 1775286501.0139244,
+      "feedback_type": "general_rating",
+      "original_input": "test command 2",
+      "original_intent": "test",
+      "original_entities": {},
+      "original_confidence": 0.8,
+      "user_correction": null,
+      "corrected_intent": null,
+      "corrected_entities": null,
+      "user_rating": 4,
+      "user_comment": null,
+      "session_id": "test_session_2",
+      "context_data": null
     }
   ],
-  "last_updated": 1764759312.3624887
+  "last_updated": 1775293701.0141988
 }

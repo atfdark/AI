@@ -1,1 +1,11 @@
-{}
+{
+  "version_test_model": {
+    "current_version": "1.2.3",
+    "last_updated": "2026-04-04T14:42:37.750210",
+    "training_metrics": {
+      "accuracy": 0.85,
+      "mae": 0.1,
+      "mse": 0.02
+    }
+  }
+}

@@ -1,0 +1,376 @@
+{
+  "rule_based": {
+    "total_tests": 15,
+    "passed": 7,
+    "failed": 8,
+    "details": [
+      {
+        "test_id": 1,
+        "input": "oppen word",
+        "expected": "open word",
+        "corrected": "open Word",
+        "confidence": 0.9,
+        "passed": true
+      },
+      {
+        "test_id": 2,
+        "input": "take screen shot",
+        "expected": "take screenshot",
+        "corrected": "take take screenshot",
+        "confidence": 0.9,
+        "passed": false
+      },
+      {
+        "test_id": 3,
+        "input": "volum up",
+        "expected": "volume up",
+        "corrected": "volum up",
+        "confidence": 1.0,
+        "passed": false
+      },
+      {
+        "test_id": 4,
+        "input": "pley music",
+        "expected": "play music",
+        "corrected": "pley music",
+        "confidence": 1.0,
+        "passed": false
+      },
+      {
+        "test_id": 5,
+        "input": "serch for python",
+        "expected": "search for python",
+        "corrected": "serch for python",
+        "confidence": 0.8,
+        "passed": false
+      },
+      {
+        "test_id": 6,
+        "input": "cloze chrome",
+        "expected": "close chrome",
+        "corrected": "close Chrome",
+        "confidence": 0.9,
+        "passed": true
+      },
+      {
+        "test_id": 7,
+        "input": "whats the weather like",
+        "expected": "what's the weather like",
+        "corrected": "whats the weather like",
+        "confidence": 0.9,
+        "passed": false
+      },
+      {
+        "test_id": 8,
+        "input": "tell me a joke",
+        "expected": "tell me a joke",
+        "corrected": "tell me a joke",
+        "confidence": 0.9333333333333332,
+        "passed": true
+      },
+      {
+        "test_id": 9,
+        "input": "system info",
+        "expected": "system info",
+        "corrected": "system info",
+        "confidence": 1.0,
+        "passed": true
+      },
+      {
+        "test_id": 10,
+        "input": "shut down",
+        "expected": "shutdown",
+        "corrected": "shut down",
+        "confidence": 1.0,
+        "passed": false
+      },
+      {
+        "test_id": 11,
+        "input": "oppen eksel",
+        "expected": "open excel",
+        "corrected": "open Excel",
+        "confidence": 0.7,
+        "passed": true
+      },
+      {
+        "test_id": 12,
+        "input": "launsh spottyfy",
+        "expected": "launch spotify",
+        "corrected": "launch Spotify",
+        "confidence": 0.7916666666666667,
+        "passed": true
+      },
+      {
+        "test_id": 13,
+        "input": "maksimiz window",
+        "expected": "maximize window",
+        "corrected": "maksimiz window",
+        "confidence": 1.0,
+        "passed": false
+      },
+      {
+        "test_id": 14,
+        "input": "tekst sarah",
+        "expected": "text sarah",
+        "corrected": "tekst sarah",
+        "confidence": 1.0,
+        "passed": false
+      },
+      {
+        "test_id": 15,
+        "input": "yutub machine learning",
+        "expected": "youtube machine learning",
+        "corrected": "youtube machine learning",
+        "confidence": 0.7142857142857143,
+        "passed": true
+      }
+    ]
+  },
+  "ml_based": {
+    "total_tests": 15,
+    "processed": 5,
+    "details": [
+      {
+        "test_id": 1,
+        "input": "oppen word",
+        "expected": "open word",
+        "corrected": "correct: oppen word",
+        "confidence": 0.0,
+        "processing_time": 0.46739697456359863
+      },
+      {
+        "test_id": 2,
+        "input": "take screen shot",
+        "expected": "take screenshot",
+        "corrected": "Take screen shot",
+        "confidence": 0.0,
+        "processing_time": 0.20569920539855957
+      },
+      {
+        "test_id": 3,
+        "input": "volum up",
+        "expected": "volume up",
+        "corrected": ": volum up",
+        "confidence": 0.0,
+        "processing_time": 0.20984530448913574
+      },
+      {
+        "test_id": 4,
+        "input": "pley music",
+        "expected": "play music",
+        "corrected": "correct: pley music",
+        "confidence": 0.0,
+        "processing_time": 0.27119922637939453
+      },
+      {
+        "test_id": 5,
+        "input": "serch for python",
+        "expected": "search for python",
+        "corrected": "correct correct: correct: serch for python",
+        "confidence": 0.0,
+        "processing_time": 0.605600118637085
+      }
+    ]
+  },
+  "hybrid": {
+    "total_tests": 15,
+    "passed": 5,
+    "failed": 10,
+    "ml_used": 12,
+    "rules_used": 6,
+    "details": [
+      {
+        "test_id": 1,
+        "input": "oppen word",
+        "expected": "open word",
+        "corrected": "open Word",
+        "confidence": 0.27,
+        "ml_used": true,
+        "rules_used": true,
+        "passed": true
+      },
+      {
+        "test_id": 2,
+        "input": "take screen shot",
+        "expected": "take screenshot",
+        "corrected": "take take screenshot",
+        "confidence": 0.27,
+        "ml_used": true,
+        "rules_used": true,
+        "passed": false
+      },
+      {
+        "test_id": 3,
+        "input": "volum up",
+        "expected": "volume up",
+        "corrected": ": volum up",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 4,
+        "input": "pley music",
+        "expected": "play music",
+        "corrected": "correct: pley music",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 5,
+        "input": "serch for python",
+        "expected": "search for python",
+        "corrected": "correct correct: correct: serch for python",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 6,
+        "input": "cloze chrome",
+        "expected": "close chrome",
+        "corrected": "close Chrome",
+        "confidence": 0.27,
+        "ml_used": true,
+        "rules_used": true,
+        "passed": true
+      },
+      {
+        "test_id": 7,
+        "input": "whats the weather like",
+        "expected": "what's the weather like",
+        "corrected": "Richtig: What is the weather like?",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 8,
+        "input": "tell me a joke",
+        "expected": "tell me a joke",
+        "corrected": "correct: tell me a joke",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 9,
+        "input": "system info",
+        "expected": "system info",
+        "corrected": "correct: system info",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 10,
+        "input": "shut down",
+        "expected": "shutdown",
+        "corrected": "shut down",
+        "confidence": 1.0,
+        "ml_used": false,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 11,
+        "input": "oppen eksel",
+        "expected": "open excel",
+        "corrected": "open Excel",
+        "confidence": 0.21,
+        "ml_used": true,
+        "rules_used": true,
+        "passed": true
+      },
+      {
+        "test_id": 12,
+        "input": "launsh spottyfy",
+        "expected": "launch spotify",
+        "corrected": "launch Spotify",
+        "confidence": 0.23750000000000002,
+        "ml_used": true,
+        "rules_used": true,
+        "passed": true
+      },
+      {
+        "test_id": 13,
+        "input": "maksimiz window",
+        "expected": "maximize window",
+        "corrected": "Richtig: maksimiz window",
+        "confidence": 0.0,
+        "ml_used": true,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 14,
+        "input": "tekst sarah",
+        "expected": "text sarah",
+        "corrected": "tekst sarah",
+        "confidence": 1.0,
+        "ml_used": false,
+        "rules_used": false,
+        "passed": false
+      },
+      {
+        "test_id": 15,
+        "input": "yutub machine learning",
+        "expected": "youtube machine learning",
+        "corrected": "youtube machine learning",
+        "confidence": 0.7142857142857143,
+        "ml_used": false,
+        "rules_used": true,
+        "passed": true
+      }
+    ]
+  },
+  "convenience": {
+    "total_tests": 5,
+    "passed": 1,
+    "failed": 4,
+    "details": [
+      {
+        "input": "oppen word",
+        "expected": "open word",
+        "corrected": "open Word",
+        "confidence": 0.27,
+        "passed": true
+      },
+      {
+        "input": "take screen shot",
+        "expected": "take screenshot",
+        "corrected": "take take screenshot",
+        "confidence": 0.27,
+        "passed": false
+      },
+      {
+        "input": "volum up",
+        "expected": "volume up",
+        "corrected": ": volum up",
+        "confidence": 0.0,
+        "passed": false
+      },
+      {
+        "input": "pley music",
+        "expected": "play music",
+        "corrected": "correct: pley music",
+        "confidence": 0.0,
+        "passed": false
+      },
+      {
+        "input": "serch for python",
+        "expected": "search for python",
+        "corrected": "correct correct: correct: serch for python",
+        "confidence": 0.0,
+        "passed": false
+      }
+    ]
+  }
+}

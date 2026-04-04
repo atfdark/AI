@@ -1,0 +1,12 @@
+{
+  "version_id": "model_data_20260404T143822336659_c2ac83d6",
+  "dataset_name": "model_data",
+  "created_at": "2026-04-04T14:38:22.336659",
+  "data_hash": "c2ac83d6",
+  "data_size": 50780,
+  "record_count": 2,
+  "metadata": {
+    "quality_score": 0.7,
+    "learning_cycle": "2026-04-04T14:38:22.336656"
+  }
+}

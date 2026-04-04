@@ -1,0 +1,21 @@
+# Python cache artifacts
+__pycache__/
+*.pyc
+
+# Test/runtime caches
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Generated runtime audit logs
+logs/audit_trail.jsonl
+
+# Local native build toolchain artifacts
+tools/vcpkg/
+
+# Managed generated artifacts
+artifacts/audio/
+artifacts/screenshots/
+artifacts/reports/

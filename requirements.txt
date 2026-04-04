@@ -25,3 +25,7 @@ scikit-learn
 openai-whisper
 torch
 transformers
+ollama
+pydantic
+sentence-transformers
+faiss-cpu

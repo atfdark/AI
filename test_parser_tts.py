@@ -26,7 +26,7 @@ def test_tts_commands():
         "speak faster",
         "set speech rate to 150",
         "increase volume",
-        "save this text to audio test_output.mp3",
+        "save this text to audio artifacts/audio/test_output.mp3",
         "test voices",
         "show available voices"
     ]

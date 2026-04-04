@@ -1,0 +1,10 @@
+{
+  "backup_name": "backup_20260404_143050",
+  "created_at": "2026-04-04T14:30:50.228598",
+  "files_backed_up": [
+    "feedback_data.json",
+    "learning_data.json"
+  ],
+  "backup_size": 1486,
+  "compression": "gzip"
+}

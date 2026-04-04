@@ -97,12 +97,13 @@ class CommandResult:
 class EnhancedCommandParser:
     """Enhanced command parser with intent recognition and natural language understanding."""
     
-    def __init__(self, actions, tts, config_path: str = None, dialogue_tracker=None, feedback_callback=None):
+    def __init__(self, actions, tts, config_path: str = None, dialogue_tracker=None, feedback_callback=None, agent_runtime=None):
         self.actions = actions
         self.tts = tts
         self.mode = 'command'  # 'command' or 'dictation'
         self.dialogue_tracker = dialogue_tracker
         self.feedback_callback = feedback_callback  # Callback to request feedback
+        self.agent_runtime = agent_runtime
 
         # Load configuration
         self.config_path = config_path or os.path.join(
@@ -1267,14 +1268,30 @@ class EnhancedCommandParser:
         # Parse the intent
         result = self.parse_intent(text)
 
-        # Execute the command
-        success = self.execute_command(result)
+        # Execute through agent runtime first when it is enabled and suitable.
+        agent_outcome = None
+        if self.agent_runtime:
+            try:
+                agent_outcome = self.agent_runtime.process(
+                    text=text,
+                    parsed_result=result,
+                    context=self._get_session_context()
+                )
+            except Exception as agent_error:
+                print(f"[WARNING] Agent runtime failed, falling back to parser execution: {agent_error}")
+                agent_outcome = None
+
+        if agent_outcome and agent_outcome.get('handled', False):
+            success = bool(agent_outcome.get('success', False))
+            response_text = agent_outcome.get('response', '') or self._get_response_text(result, success)
+        else:
+            success = self.execute_command(result)
+            response_text = self._get_response_text(result, success)
 
         # Calculate processing time
         processing_time = time.time() - command_start_time
 
-        # Generate response text for tracking
-        response_text = self._get_response_text(result, success)
+        # Generate response text for tracking (may come from agent runtime)
 
         # Enhanced interaction data
         interaction_data.update({

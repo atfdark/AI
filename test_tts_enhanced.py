@@ -48,7 +48,8 @@ def test_pyttsx3_features():
 
     # Test 6: Save text to audio file
     print("\n6. Testing save_text_to_audio_file()...")
-    filename = "test_tts_output.mp3"
+    filename = os.path.join("artifacts", "audio", "test_tts_output.mp3")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     success = actions.save_text_to_audio_file("This is a test audio file.", filename)
     print(f"Save to file '{filename}': {'Success' if success else 'Failed'}")
 

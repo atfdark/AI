@@ -88,6 +88,11 @@ python CODE.PY
 python enhanced_launcher.py --test
 ```
 
+**Show Implementation Status**
+```bash
+python enhanced_launcher.py --status
+```
+
 **Interactive Demo**
 ```bash
 python enhanced_launcher.py --demo
@@ -168,6 +173,20 @@ Add to `config.json`:
 ```
 
 ## 🔧 Advanced Features
+
+### Implementation Status Report
+
+Use the launcher status mode to quickly see what is implemented in your current setup:
+
+```bash
+python enhanced_launcher.py --status
+```
+
+The report includes:
+- Feature groups implemented in `assistant/`
+- Current configuration snapshot (apps, wake word, language, preferred engine)
+- Dependency availability (speech, NLP, ML, Windows integrations)
+- Test script coverage snapshot
 
 ### Offline Speech Recognition (Vosk)
 
@@ -301,6 +320,7 @@ This project is open source. Feel free to modify and distribute.
 | Start Assistant | `python enhanced_launcher.py` |
 | Configuration Wizard | `python enhanced_launcher.py --config-wizard` |
 | Run Tests | `python enhanced_launcher.py --test` |
+| Implementation Status | `python enhanced_launcher.py --status` |
 | Interactive Demo | `python enhanced_launcher.py --demo` |
 | Classic Mode | `python enhanced_launcher.py --classic` |
 | Help | `python enhanced_launcher.py --help` |

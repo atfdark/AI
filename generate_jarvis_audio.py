@@ -14,7 +14,8 @@ from tts import TTS
 def main():
     tts = TTS()
     text = "JARVIS systems offline. Goodbye."
-    output_file = "jarvis_shutdown.mp3"
+    output_file = os.path.join("artifacts", "audio", "jarvis_shutdown.mp3")
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     success = tts.generate_audio_file(text, output_file)
     if success:

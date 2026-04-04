@@ -1,0 +1,1 @@
+{"timestamp": "2026-04-04T14:42:37.740112", "level": "INFO", "logger": "assistant.global_test_model", "message": "ML Event: prediction", "module": "logger", "function": "log_ml_event", "line": 122, "event_type": "prediction", "input_text": "global test", "prediction": 5.2, "confidence": 0.8, "processing_time_ms": 100.0}

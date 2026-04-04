@@ -1,42 +1,133 @@
 {
-  "session_id": "session_1764761684",
-  "session_start": 1764761684.803699,
-  "last_activity": 1764761732.880945,
+  "session_id": "session_1775293738",
+  "session_start": 1775293738.5189195,
+  "last_activity": 1775293899.0744925,
   "history": [
     {
-      "timestamp": 1764761703.5647721,
-      "user_input": "open age",
-      "intent": "open_application",
+      "timestamp": 1775293738.5201228,
+      "user_input": "search for python tutorials",
+      "intent": "search",
       "confidence": 0.9,
       "entities": {
-        "application": "age"
+        "query": "python tutorials"
       },
-      "response": "Failed to execute open_application",
-      "success": false,
-      "context_references": []
-    },
-    {
-      "timestamp": 1764761722.080758,
-      "user_input": "open Edge",
-      "intent": "open_application",
-      "confidence": 0.9,
-      "entities": {
-        "application": "edge"
-      },
-      "response": "Opening edge",
+      "response": "Searching for python tutorials",
       "success": true,
       "context_references": []
     },
     {
-      "timestamp": 1764761732.8809452,
-      "user_input": "search for what is the",
+      "timestamp": 1775293738.5215456,
+      "user_input": "what about java",
+      "intent": "search",
+      "confidence": 0.8,
+      "entities": {
+        "query": "java tutorials"
+      },
+      "response": "Searching for java tutorials",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1775293738.5228403,
+      "user_input": "tell me about machine learning",
+      "intent": "wikipedia",
+      "confidence": 0.85,
+      "entities": {
+        "topic": "machine learning"
+      },
+      "response": "Machine learning summary",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1775293738.5244772,
+      "user_input": "what about deep learning",
+      "intent": "wikipedia",
+      "confidence": 0.8,
+      "entities": {
+        "topic": "deep learning"
+      },
+      "response": "Deep learning summary",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1775293738.5261784,
+      "user_input": "search for that again",
+      "intent": "search",
+      "confidence": 0.7,
+      "entities": {
+        "query": "deep learning"
+      },
+      "response": "Searching for deep learning",
+      "success": true,
+      "context_references": [
+        "previous_result",
+        "repeat_last_action"
+      ]
+    },
+    {
+      "timestamp": 1775293738.5275688,
+      "user_input": "what's the weather there",
+      "intent": "weather",
+      "confidence": 0.9,
+      "entities": {
+        "location": "current"
+      },
+      "response": "Weather information",
+      "success": true,
+      "context_references": [
+        "last_location"
+      ]
+    },
+    {
+      "timestamp": 1775293899.0597265,
+      "user_input": "open chrome",
+      "intent": "open_application",
+      "confidence": 0.9,
+      "entities": {
+        "application": "chrome"
+      },
+      "response": "Executed open_application",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1775293899.0610664,
+      "user_input": "search for python",
       "intent": "search",
       "confidence": 0.9,
       "entities": {
-        "query": "what is the",
+        "query": "python",
         "engine": "google"
       },
-      "response": "Searching for what is the",
+      "response": "Executed search",
+      "success": true,
+      "context_references": []
+    },
+    {
+      "timestamp": 1775293899.0701342,
+      "user_input": "tell me more about it",
+      "intent": "wikipedia",
+      "confidence": 0.0,
+      "entities": {
+        "topic": "deep learning"
+      },
+      "response": "Executed wikipedia",
+      "success": true,
+      "context_references": [
+        "last_entity"
+      ]
+    },
+    {
+      "timestamp": 1775293899.0744925,
+      "user_input": "what about machine learning",
+      "intent": "unknown",
+      "confidence": 0.0,
+      "entities": {
+        "text": "what about machine learning"
+      },
+      "response": "Executed unknown",
       "success": true,
       "context_references": []
     }
