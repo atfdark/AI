@@ -107,6 +107,42 @@ python enhanced_launcher.py --doctor
 python enhanced_launcher.py --test
 ```
 
-## 4. Practical Conclusion
+## 4. Jarvis Maturity (Reality Check)
 
-Based on current launcher status checks and module mapping, tracked implementation areas are fully present in the repository (100% in the defined feature groups), with environment dependencies available and a broad test suite present.
+Important distinction:
+- Module coverage can be 100% in tracked groups.
+- Jarvis-grade product maturity is lower because some high-impact capabilities are still partial or missing.
+
+### Strong today
+- Voice input pipeline with online/offline fallback
+- Intent parsing + ensemble routing
+- App control for Notepad/Chrome/VS Code
+- Agent/tooling, memory, and analytics foundations
+
+### Still weak or missing for true Jarvis feel
+- Always-on robust wake-word engine (OpenWakeWord/Porcupine tier)
+- Visual HUD/assistant face overlay
+- Advanced file intelligence workflows (search/read/summarize common document types by voice)
+- Deep web interaction automation (Playwright-style multi-step browser control)
+- Rich long-term conversational memory UX (beyond low-level storage)
+
+## 5. Upgrades Implemented In This Iteration
+
+- Neural TTS support added:
+  - `edge-tts` backend integrated in `assistant/tts.py`
+  - Automatic fallback to `pyttsx3` when neural dependencies are unavailable
+  - Configurable voice/rate/pitch/volume via `config.json` (`tts` section)
+- Cloud LLM fallback added:
+  - Claude (Anthropic) and Gemini support in `assistant/llm_router.py`
+  - Existing Ollama path preserved as first choice when enabled
+  - Cloud fallback used for question answering when Ollama is disabled/unavailable
+  - Provider readiness surfaced in launcher diagnostics (`--agent-test`)
+
+## 6. Practical Conclusion
+
+You now have a strong hybrid architecture:
+- Local-first assistant (fast, private) with optional cloud intelligence when needed
+- Neural voice option for much more natural responses
+- Existing command stack preserved with backward compatibility
+
+Next highest-impact build steps are wake-word hardening and a lightweight HUD.

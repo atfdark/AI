@@ -90,6 +90,27 @@
     "low_confidence_threshold": 0.55,
     "speak_responses": true
   },
+  "cloud_llm": {
+    "enabled": false,
+    "provider": "anthropic",
+    "timeout_seconds": 25,
+    "anthropic_api_key": "",
+    "anthropic_model": "claude-3-5-sonnet-latest",
+    "anthropic_url": "https://api.anthropic.com/v1/messages",
+    "gemini_api_key": "",
+    "gemini_model": "gemini-1.5-flash",
+    "gemini_url_base": "https://generativelanguage.googleapis.com/v1beta"
+  },
+  "tts": {
+    "engine": "edge_tts",
+    "edge_tts": {
+      "voice": "en-US-GuyNeural",
+      "rate": "+0%",
+      "pitch": "+0Hz",
+      "volume": "+0%",
+      "output_format": "riff-24khz-16bit-mono-pcm"
+    }
+  },
   "memory": {
     "db_path": "data_versions/semantic_memory.db",
     "enable_embeddings": true,

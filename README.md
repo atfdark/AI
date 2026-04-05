@@ -110,6 +110,12 @@ python knowledge_corpus_bootstrap.py ingest-registered --max-files-per-dataset 5
 python enhanced_launcher.py --status
 ```
 
+**Environment Doctor (Recommended Before First Run)**
+```bash
+python enhanced_launcher.py --doctor
+python enhanced_launcher.py --doctor --fix
+```
+
 **Interactive Demo**
 ```bash
 python enhanced_launcher.py --demo
@@ -224,11 +230,37 @@ Add to `config.json`:
 
 ```json
 {
-  "voice_settings": {
-    "tts_rate": 1.0
+  "tts": {
+    "engine": "edge_tts",
+    "edge_tts": {
+      "voice": "en-US-GuyNeural",
+      "rate": "+0%",
+      "pitch": "+0Hz",
+      "volume": "+0%",
+      "output_format": "riff-24khz-16bit-mono-pcm"
+    }
   }
 }
 ```
+
+### Cloud LLM Fallback (Claude / Gemini)
+
+```json
+{
+  "cloud_llm": {
+    "enabled": false,
+    "provider": "anthropic",
+    "anthropic_api_key": "",
+    "anthropic_model": "claude-3-5-sonnet-latest",
+    "gemini_api_key": "",
+    "gemini_model": "gemini-1.5-flash"
+  }
+}
+```
+
+Notes:
+- Keep `enabled: false` until you add an API key.
+- If Ollama is enabled, local answering is attempted first; cloud is used as fallback.
 
 ## 🔧 Advanced Features
 

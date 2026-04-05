@@ -261,6 +261,8 @@ class AgentRuntime:
             "tool_count": len(self.registry.list_tools()),
             "ollama_enabled": self.router.enable_ollama,
             "ollama_model": self.router.ollama_model,
+            "cloud_llm_enabled": self.router.enable_cloud_llm,
+            "cloud_llm_provider": self.router.cloud_provider,
             "memory_db": self.memory_store.db_path,
             "file_index": self.file_search_engine.stats(),
             "knowledge": self.knowledge_brain.stats(),

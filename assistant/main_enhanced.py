@@ -32,7 +32,7 @@ class VoiceAssistant:
         self.config = self._load_config()
         
         # Initialize components
-        self.tts = TTS()
+        self.tts = TTS(config_path=self.config_path)
         self.actions = Actions()
 
         # Initialize dialogue state tracker first

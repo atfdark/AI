@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from .query_composer import compose_router_prompt
@@ -34,6 +36,24 @@ class LLMRouter:
         self.ollama_model = agent_cfg.get("ollama_model", "tinyllama:latest")
         self.low_confidence_threshold = float(agent_cfg.get("low_confidence_threshold", 0.55))
         self.request_timeout = float(agent_cfg.get("ollama_timeout_seconds", 20))
+
+        # Optional cloud LLM fallback for richer Jarvis-style QA.
+        cloud_cfg = config.get("cloud_llm", {})
+        self.enable_cloud_llm = bool(cloud_cfg.get("enabled", False))
+        self.cloud_provider = str(cloud_cfg.get("provider", "anthropic")).strip().lower()
+        self.cloud_timeout = float(cloud_cfg.get("timeout_seconds", 25))
+
+        self.anthropic_api_key = (
+            cloud_cfg.get("anthropic_api_key")
+            or cloud_cfg.get("claude_api_key")
+            or os.environ.get("ANTHROPIC_API_KEY", "")
+        )
+        self.anthropic_model = cloud_cfg.get("anthropic_model", cloud_cfg.get("claude_model", "claude-3-5-sonnet-latest"))
+        self.anthropic_url = cloud_cfg.get("anthropic_url", "https://api.anthropic.com/v1/messages")
+
+        self.gemini_api_key = cloud_cfg.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY", "")
+        self.gemini_model = cloud_cfg.get("gemini_model", "gemini-1.5-flash")
+        self.gemini_url_base = cloud_cfg.get("gemini_url_base", "https://generativelanguage.googleapis.com/v1beta")
 
     def decide(
         self,
@@ -174,9 +194,7 @@ class LLMRouter:
             return None
 
     def answer_question(self, question: str, memory_context: str = "", knowledge_context: str = "") -> str:
-        """Generate an offline answer with optional memory context."""
-        if not self.enable_ollama:
-            return "I can only answer from stored memory right now because Ollama is disabled."
+        """Generate an answer using local Ollama first, then optional cloud fallback."""
 
         prompt_payload = {
             "task": "Answer the question concisely using local knowledge and optional memory context.",
@@ -191,7 +209,17 @@ class LLMRouter:
             "knowledge_context": knowledge_context,
         }
         prompt = json.dumps(prompt_payload, ensure_ascii=False)
-        answer = self._call_ollama_text(prompt)
+
+        answer = ""
+        if self.enable_ollama:
+            answer = self._call_ollama_text(prompt)
+
+        if not answer and self.enable_cloud_llm:
+            answer = self._call_cloud_text(prompt)
+
+        if not answer and not self.enable_ollama and not self.enable_cloud_llm:
+            return "I can only answer from stored memory right now because no LLM provider is enabled."
+
         return answer or "I could not produce a reliable offline answer."
 
     def _call_ollama_text(self, prompt: str) -> str:
@@ -214,6 +242,85 @@ class LLMRouter:
                 raw = response.read().decode("utf-8")
             data = json.loads(raw)
             return data.get("response", "").strip()
+        except Exception:
+            return ""
+
+    def _call_cloud_text(self, prompt: str) -> str:
+        """Dispatch question-answering request to configured cloud LLM provider."""
+        provider = self.cloud_provider
+        if provider in ("anthropic", "claude"):
+            return self._call_anthropic_text(prompt)
+        if provider in ("gemini", "google"):
+            return self._call_gemini_text(prompt)
+        return ""
+
+    def _call_anthropic_text(self, prompt: str) -> str:
+        if not self.anthropic_api_key:
+            return ""
+
+        body = {
+            "model": self.anthropic_model,
+            "max_tokens": 700,
+            "temperature": 0.2,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+
+        try:
+            payload = json.dumps(body).encode("utf-8")
+            req = urllib_request.Request(
+                self.anthropic_url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": self.anthropic_api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                method="POST",
+            )
+            with urllib_request.urlopen(req, timeout=self.cloud_timeout) as response:
+                raw = response.read().decode("utf-8")
+            data = json.loads(raw)
+            content = data.get("content", [])
+            if content and isinstance(content, list):
+                texts = [item.get("text", "") for item in content if isinstance(item, dict)]
+                return "\n".join(part for part in texts if part).strip()
+            return ""
+        except Exception:
+            return ""
+
+    def _call_gemini_text(self, prompt: str) -> str:
+        if not self.gemini_api_key:
+            return ""
+
+        model = urllib_parse.quote(self.gemini_model, safe="")
+        url = f"{self.gemini_url_base}/models/{model}:generateContent?key={urllib_parse.quote(self.gemini_api_key, safe='')}"
+        body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 700,
+            },
+        }
+
+        try:
+            payload = json.dumps(body).encode("utf-8")
+            req = urllib_request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib_request.urlopen(req, timeout=self.cloud_timeout) as response:
+                raw = response.read().decode("utf-8")
+            data = json.loads(raw)
+
+            candidates = data.get("candidates", [])
+            if not candidates:
+                return ""
+
+            parts = candidates[0].get("content", {}).get("parts", [])
+            texts = [part.get("text", "") for part in parts if isinstance(part, dict)]
+            return "\n".join(part for part in texts if part).strip()
         except Exception:
             return ""
 

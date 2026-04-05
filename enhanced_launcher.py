@@ -474,6 +474,7 @@ def show_implementation_status(config_path: str = 'config.json'):
         'NLTK': 'nltk',
         'PyAutoGUI': 'pyautogui',
         'PyTTSx3': 'pyttsx3',
+        'Edge TTS': 'edge_tts',
         'News API': 'newsapi',
         'Wikipedia': 'wikipedia',
         'PyJokes': 'pyjokes',
@@ -561,6 +562,8 @@ def run_agent_diagnostics(config_path: str = 'config.json'):
         print(f"  [OK] Registered tools: {health.get('tool_count')}")
         print(f"  [OK] Ollama enabled: {health.get('ollama_enabled')}")
         print(f"  [OK] Ollama model: {health.get('ollama_model')}")
+        print(f"  [OK] Cloud LLM enabled: {health.get('cloud_llm_enabled')}")
+        print(f"  [OK] Cloud LLM provider: {health.get('cloud_llm_provider')}")
         knowledge = health.get('knowledge', {})
         if knowledge:
             print(f"  [OK] Knowledge sources: {knowledge.get('sources')}")

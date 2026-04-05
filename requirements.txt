@@ -20,6 +20,7 @@ psutil
 pypiwin32
 comtypes
 pyttsx3
+edge-tts
 spacy
 nltk
 scikit-learn
