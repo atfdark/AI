@@ -58,16 +58,22 @@ class VoiceAssistant:
             feedback_callback=self._request_feedback,
             agent_runtime=self.agent_runtime
         )
+        wake_cfg = self.config.get('wake_word', {})
+        self.wake_word_enabled = bool(wake_cfg.get('enabled', False))
+        # Default behavior is command-first for better UX: wake word is optional unless explicitly required.
+        self.require_wake_word_for_commands = bool(wake_cfg.get('require_for_commands', False))
         self.recognizer = EnhancedSpeechRecognizer(
             callback=self._handle_command_text,
             wake_word_callback=self._handle_wake_word,
-            config_path=self.config_path
+            config_path=self.config_path,
+            tts=self.tts
         )
         
         # Assistant state
         self.is_running = False
         self.is_listening = False
-        self.is_active = False  # Whether wake word has activated listening
+        # When wake-word is optional, start in active mode so commands execute immediately.
+        self.is_active = not self.require_wake_word_for_commands
         self.activation_timeout = self.config.get('wake_word', {}).get('timeout', 30)
         self.last_activation = None
         self.start_time = None
@@ -141,7 +147,7 @@ class VoiceAssistant:
 
     def _handle_command_text(self, text: str):
         """Handle command text, only if assistant is active."""
-        if not self.is_active:
+        if self.require_wake_word_for_commands and not self.is_active:
             return  # Ignore commands when not active
 
         # Check if this is feedback response
@@ -228,8 +234,12 @@ class VoiceAssistant:
         if wake_config.get('enabled', False):
             wake_word = wake_config.get('word', 'jarvis')
             timeout = wake_config.get('timeout', 30)
-            print(f"\nWAKE WORD: '{wake_word}' (timeout: {timeout}s)")
-            print("    Say the wake word to activate the assistant")
+            if self.require_wake_word_for_commands:
+                print(f"\nWAKE WORD: '{wake_word}' (timeout: {timeout}s)")
+                print("    Say the wake word to activate the assistant")
+            else:
+                print(f"\nWAKE WORD: '{wake_word}' (optional)")
+                print("    You can speak commands directly or use the wake word")
         else:
             print(f"\nCONTINUOUS LISTENING: Always active")
 
@@ -271,7 +281,7 @@ class VoiceAssistant:
                     ).total_seconds()
 
                 # Check activation timeout
-                if self.is_active and self.last_activation:
+                if self.require_wake_word_for_commands and self.is_active and self.last_activation:
                     if (datetime.now() - self.last_activation).total_seconds() > self.activation_timeout:
                         self.is_active = False
                         print("Activation timeout - say wake word to reactivate")

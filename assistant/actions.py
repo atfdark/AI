@@ -187,9 +187,139 @@ class Actions:
             print(f"Failed to open URL {url}: {e}")
             return False
 
+    def open_path(self, path):
+        """Open a local file or folder path in the platform default app."""
+        try:
+            expanded = os.path.expandvars(os.path.expanduser(path))
+            normalized = os.path.abspath(expanded)
+            if not os.path.exists(normalized):
+                print(f"Path not found: {normalized}")
+                return False
+
+            if hasattr(os, 'startfile'):
+                os.startfile(normalized)
+                return True
+
+            # Fallback for non-Windows environments.
+            subprocess.Popen([normalized], shell=True)
+            return True
+        except Exception as e:
+            print(f"Failed to open path {path}: {e}")
+            return False
+
     def close_window(self):
         # Alt+F4
         self.hotkey('alt', 'f4')
+
+    def close_application(self, app_name):
+        """Close a known desktop application by process name on Windows."""
+        process_map = {
+            'notepad': 'notepad.exe',
+            'chrome': 'chrome.exe',
+            'vs code': 'Code.exe',
+            'vscode': 'Code.exe',
+            'visual studio code': 'Code.exe',
+        }
+
+        target = (app_name or '').strip().lower()
+        process_name = process_map.get(target)
+        if not process_name:
+            return False
+
+        try:
+            result = subprocess.run(
+                ['taskkill', '/IM', process_name, '/F'],
+                capture_output=True,
+                text=True,
+                shell=False
+            )
+            # taskkill returns non-zero if process is already closed; treat as non-fatal.
+            return result.returncode in (0, 128)
+        except Exception as e:
+            print(f"Failed to close {app_name}: {e}")
+            return False
+
+    def execute_app_shortcut(self, app_name, command_key):
+        """Execute app-specific keyboard shortcuts for Notepad, Chrome, and VS Code."""
+        app = (app_name or '').strip().lower()
+        key = (command_key or '').strip().lower()
+
+        shortcut_map = {
+            'chrome': {
+                'new_tab': ('ctrl', 't'),
+                'close_tab': ('ctrl', 'w'),
+                'next_tab': ('ctrl', 'tab'),
+                'previous_tab': ('ctrl', 'shift', 'tab'),
+                'reopen_tab': ('ctrl', 'shift', 't'),
+                'new_window': ('ctrl', 'n'),
+                'incognito': ('ctrl', 'shift', 'n'),
+                'refresh': ('ctrl', 'r'),
+                'hard_refresh': ('ctrl', 'shift', 'r'),
+                'focus_address_bar': ('ctrl', 'l'),
+                'downloads': ('ctrl', 'j'),
+                'history': ('ctrl', 'h'),
+                'bookmark_page': ('ctrl', 'd'),
+                'dev_tools': ('ctrl', 'shift', 'i'),
+            },
+            'notepad': {
+                'new_file': ('ctrl', 'n'),
+                'open_file': ('ctrl', 'o'),
+                'save_file': ('ctrl', 's'),
+                'save_as': ('ctrl', 'shift', 's'),
+                'find_text': ('ctrl', 'f'),
+                'replace_text': ('ctrl', 'h'),
+                'select_all': ('ctrl', 'a'),
+                'undo': ('ctrl', 'z'),
+                'redo': ('ctrl', 'y'),
+                'time_date': ('f5',),
+            },
+            'vs code': {
+                'new_file': ('ctrl', 'n'),
+                'open_file': ('ctrl', 'o'),
+                'save_file': ('ctrl', 's'),
+                'save_all': ('ctrl', 'k', 's'),
+                'close_editor': ('ctrl', 'w'),
+                'next_tab': ('ctrl', 'tab'),
+                'previous_tab': ('ctrl', 'shift', 'tab'),
+                'command_palette': ('ctrl', 'shift', 'p'),
+                'quick_open': ('ctrl', 'p'),
+                'toggle_terminal': ('ctrl', '`'),
+                'new_terminal': ('ctrl', 'shift', '`'),
+                'split_editor': ('ctrl', '\\'),
+                'format_document': ('shift', 'alt', 'f'),
+                'settings': ('ctrl', ','),
+                'extensions': ('ctrl', 'shift', 'x'),
+                'explorer': ('ctrl', 'shift', 'e'),
+                'source_control': ('ctrl', 'shift', 'g'),
+                'run_and_debug': ('ctrl', 'shift', 'd'),
+            }
+        }
+
+        # Normalize aliases
+        if app in ('vscode', 'visual studio code'):
+            app = 'vs code'
+
+        app_shortcuts = shortcut_map.get(app)
+        if not app_shortcuts:
+            return False
+
+        keys = app_shortcuts.get(key)
+        if not keys:
+            return False
+
+        try:
+            # Chorded shortcuts in VS Code can include sequential keypresses.
+            if key == 'save_all' and app == 'vs code':
+                self.hotkey('ctrl', 'k')
+                time.sleep(0.08)
+                self.press('s')
+                return True
+
+            self.hotkey(*keys)
+            return True
+        except Exception as e:
+            print(f"Failed to execute shortcut {command_key} for {app_name}: {e}")
+            return False
 
     def copy(self):
         self.hotkey('ctrl', 'c')

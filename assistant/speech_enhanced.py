@@ -3,6 +3,7 @@ import threading
 import time
 import os
 import json
+import socket
 from typing import Optional, Callable
 import numpy as np
 
@@ -134,9 +135,14 @@ class EnhancedSpeechRecognizer:
 
         # State management
         self.stop_listening = None
-        self.current_engine = self.config.get('preferred_engine', 'auto')
+        sr_cfg = self.config.get('speech_recognition', {})
+        self.current_engine = sr_cfg.get('preferred_engine', 'auto')
+        self.network_auto_switch = sr_cfg.get('network_auto_switch', True)
+        self._internet_check_ttl_seconds = 8
+        self._last_internet_check_at = 0.0
+        self._last_internet_available = True
         self.is_listening = False
-        self.push_to_talk_mode = self.config.get('speech_recognition', {}).get('push_to_talk', {}).get('enabled', False)
+        self.push_to_talk_mode = sr_cfg.get('push_to_talk', {}).get('enabled', False)
 
         # Performance tracking
         self.recognition_stats = {
@@ -310,12 +316,51 @@ class EnhancedSpeechRecognizer:
 
         return config
 
+    def _has_internet_connection(self, force_refresh: bool = False) -> bool:
+        """Return internet availability with short-lived caching."""
+        now = time.time()
+        if not force_refresh and (now - self._last_internet_check_at) < self._internet_check_ttl_seconds:
+            return self._last_internet_available
+
+        checks = [
+            ('1.1.1.1', 53),
+            ('8.8.8.8', 53),
+        ]
+
+        available = False
+        for host, port in checks:
+            try:
+                with socket.create_connection((host, port), timeout=1.5):
+                    available = True
+                    break
+            except OSError:
+                continue
+
+        self._last_internet_check_at = now
+        self._last_internet_available = available
+        return available
+
+    def _get_auto_engine_order(self) -> list[str]:
+        """Pick engine order based on connectivity and available engines."""
+        online = self._has_internet_connection(force_refresh=False)
+
+        if self.network_auto_switch and not online:
+            # Prefer fully local engines first when offline.
+            return ['ml_asr', 'vosk', 'pyaudio']
+
+        return ['google', 'ml_asr', 'vosk', 'pyaudio']
+
     def initialize_engines(self):
         """Initialize available speech recognition engines."""
+        internet_available = self._has_internet_connection(force_refresh=True)
+
         # Test Google Speech Recognition
         if self.microphone is None:
             self.google_available = False
             print("[WARNING] No microphone available, Google ASR disabled")
+        elif not internet_available:
+            self.google_available = False
+            print("[INFO] Internet not detected, Google ASR disabled for now")
         else:
             try:
                 with self.microphone as source:
@@ -399,7 +444,7 @@ class EnhancedSpeechRecognizer:
             print("[WARNING] No microphone available, skipping calibration")
             return
 
-        sr_config = self.config
+        sr_config = self.config.get('speech_recognition', {})
         
         # Energy threshold settings
         if sr_config.get('energy_threshold'):
@@ -596,6 +641,7 @@ class EnhancedSpeechRecognizer:
                         correction_confidence = 0.6
 
                 # Use corrected text for further processing
+                corrected_text = self._guard_command_correction(original_text, corrected_text)
                 text_lower = corrected_text.lower()
 
                 # Check for wake word first (always check, regardless of active state)
@@ -716,6 +762,36 @@ class EnhancedSpeechRecognizer:
 
         return ' '.join(corrected_words)
 
+    def _guard_command_correction(self, original_text: str, corrected_text: str) -> str:
+        """Prevent aggressive correction from changing a clear command intent."""
+        original = (original_text or '').strip()
+        corrected = (corrected_text or '').strip()
+        if not original or not corrected:
+            return corrected_text
+
+        original_tokens = original.lower().split()
+        corrected_tokens = corrected.lower().split()
+        if not original_tokens or not corrected_tokens:
+            return corrected_text
+
+        command_verbs = {
+            'open', 'launch', 'start', 'run', 'close', 'search', 'find',
+            'play', 'stop', 'take', 'increase', 'decrease', 'copy', 'paste'
+        }
+
+        original_first = original_tokens[0]
+        corrected_first = corrected_tokens[0]
+
+        # If correction removes the leading command verb, keep the original command.
+        if original_first in command_verbs and corrected_first not in command_verbs:
+            return original
+
+        # Keep "open X" commands from turning into "search for X".
+        if original_first == 'open' and 'search for' in corrected.lower() and 'search for' not in original.lower():
+            return original
+
+        return corrected_text
+
     def _recognize_speech(self, audio: sr.AudioData) -> Optional[str]:
         """Attempt speech recognition with fallback engines."""
         start_time = time.time()
@@ -724,78 +800,92 @@ class EnhancedSpeechRecognizer:
             # Auto mode: try Google first, then ML ASR, then Vosk
             if self.current_engine == 'auto':
                 fallback_used = False
+                for engine in self._get_auto_engine_order():
+                    if engine == 'google':
+                        # Recheck internet periodically so Google can recover automatically.
+                        if not self._has_internet_connection(force_refresh=False):
+                            fallback_used = True
+                            continue
+                        if self.microphone is None:
+                            fallback_used = True
+                            continue
 
-                # Try Google first
-                if self.google_available:
-                    try:
-                        google_start = time.time()
-                        self.recognition_stats['google_attempts'] += 1
-                        text = self.recognizer.recognize_google(audio)
-                        elapsed = time.time() - google_start
-                        self.recognition_stats['google_avg_time'] = (
-                            (self.recognition_stats['google_avg_time'] * (self.recognition_stats['google_successes'])) + elapsed
-                        ) / (self.recognition_stats['google_successes'] + 1)
-                        self.recognition_stats['google_successes'] += 1
+                        try:
+                            google_start = time.time()
+                            self.recognition_stats['google_attempts'] += 1
+                            text = self.recognizer.recognize_google(audio)
+                            elapsed = time.time() - google_start
+                            self.recognition_stats['google_avg_time'] = (
+                                (self.recognition_stats['google_avg_time'] * (self.recognition_stats['google_successes'])) + elapsed
+                            ) / (self.recognition_stats['google_successes'] + 1)
+                            self.recognition_stats['google_successes'] += 1
 
-                        # Detect language and update current language
-                        detected_lang = self._detect_language(text)
-                        if detected_lang != self.current_language:
-                            self.current_language = detected_lang
-                            print(f"[INFO] Language switched to: {detected_lang}")
+                            detected_lang = self._detect_language(text)
+                            if detected_lang != self.current_language:
+                                self.current_language = detected_lang
+                                print(f"[INFO] Language switched to: {detected_lang}")
 
-                        # Log successful recognition
-                        log_ml_prediction('asr', '', text, 1.0, elapsed)
-                        logger.info(f"Google ASR successful: '{text}' in {elapsed:.3f}s")
-                        return text
-                    except sr.UnknownValueError:
-                        fallback_used = True
-                        logger.debug("Google ASR: no speech detected")
-                    except Exception as e:
-                        print(f"[WARNING] Google recognition failed: {e}")
-                        log_error_with_context('asr', e, {
-                            'engine': 'google',
-                            'operation': 'recognition'
-                        })
-                        self.google_available = False  # Mark as unavailable
-                        fallback_used = True
+                            if fallback_used:
+                                self.recognition_stats['fallback_count'] += 1
 
-                # Try ML ASR second
-                if self.ml_asr_available:
-                    text = self._ml_asr_recognize(audio)
-                    if text:
-                        if fallback_used:
-                            self.recognition_stats['fallback_count'] += 1
-                        # Detect language and update current language
-                        detected_lang = self._detect_language(text)
-                        if detected_lang != self.current_language:
-                            self.current_language = detected_lang
-                            print(f"[INFO] Language switched to: {detected_lang}")
+                            log_ml_prediction('asr', '', text, 1.0, elapsed)
+                            logger.info(f"Google ASR successful (fallback={fallback_used}): '{text}' in {elapsed:.3f}s")
+                            return text
+                        except sr.UnknownValueError:
+                            fallback_used = True
+                            logger.debug("Google ASR: no speech detected")
+                            continue
+                        except Exception as e:
+                            print(f"[WARNING] Google recognition failed: {e}")
+                            log_error_with_context('asr', e, {
+                                'engine': 'google',
+                                'operation': 'recognition'
+                            })
+                            fallback_used = True
+                            continue
 
-                        logger.info(f"ML ASR successful (fallback={fallback_used}): '{text}'")
-                        return text
-                    else:
+                    elif engine == 'ml_asr':
+                        if not self.ml_asr_available:
+                            fallback_used = True
+                            continue
+                        text = self._ml_asr_recognize(audio)
+                        if text:
+                            detected_lang = self._detect_language(text)
+                            if detected_lang != self.current_language:
+                                self.current_language = detected_lang
+                                print(f"[INFO] Language switched to: {detected_lang}")
+
+                            if fallback_used:
+                                self.recognition_stats['fallback_count'] += 1
+                            logger.info(f"ML ASR successful (fallback={fallback_used}): '{text}'")
+                            return text
+
                         fallback_used = True
                         logger.debug("ML ASR failed, trying fallback")
 
-                # Fallback to Vosk
-                if self.vosk_available:
-                    text = self._vosk_recognize(audio)
-                    if text:
-                        if fallback_used:
-                            self.recognition_stats['fallback_count'] += 1
-                        logger.info(f"Vosk ASR successful (fallback={fallback_used}): '{text}'")
-                        return text
-                    else:
+                    elif engine == 'vosk':
+                        if not self.vosk_available:
+                            fallback_used = True
+                            continue
+                        text = self._vosk_recognize(audio)
+                        if text:
+                            if fallback_used:
+                                self.recognition_stats['fallback_count'] += 1
+                            logger.info(f"Vosk ASR successful (fallback={fallback_used}): '{text}'")
+                            return text
                         fallback_used = True
 
-                # Final fallback to PyAudio with advanced filtering
-                if PYAUDIO_AVAILABLE:
-                    text = self._pyaudio_recognize(audio)
-                    if text:
-                        if fallback_used:
-                            self.recognition_stats['fallback_count'] += 1
-                        logger.info(f"PyAudio fallback successful (fallback={fallback_used}): '{text}'")
-                        return text
+                    elif engine == 'pyaudio':
+                        if not PYAUDIO_AVAILABLE:
+                            fallback_used = True
+                            continue
+                        text = self._pyaudio_recognize(audio)
+                        if text:
+                            if fallback_used:
+                                self.recognition_stats['fallback_count'] += 1
+                            logger.info(f"PyAudio fallback successful (fallback={fallback_used}): '{text}'")
+                            return text
+                        fallback_used = True
 
             # Specific engine mode
             elif self.current_engine == 'google' and self.google_available:
@@ -856,6 +946,7 @@ class EnhancedSpeechRecognizer:
     def _vosk_recognize(self, audio: sr.AudioData) -> Optional[str]:
         """Recognize speech using Vosk offline engine."""
         try:
+            from vosk import KaldiRecognizer
             start_time = time.time()
             self.recognition_stats['vosk_attempts'] += 1
 

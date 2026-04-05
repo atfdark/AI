@@ -669,6 +669,12 @@ class EnhancedCommandParser:
                 parameters={'text': text}
             )
 
+        # Deterministic app control for Notepad/Chrome/VS Code so these commands
+        # do not rely on low-confidence ML routing.
+        direct_app_result = self._parse_direct_app_control(text)
+        if direct_app_result:
+            return direct_app_result
+
         # Try Ensemble classifier first if available
         if self.ensemble_classifier:
             try:
@@ -800,7 +806,7 @@ class EnhancedCommandParser:
 
     def _extract_parameters(self, intent: Intent, match: re.Match, text: str) -> Dict[str, any]:
         """Extract parameters based on intent and regex match."""
-        parameters = {}
+        parameters = {'text': text}
         
         if intent == Intent.OPEN_APPLICATION:
             # Extract application name from the match
@@ -1250,6 +1256,132 @@ class EnhancedCommandParser:
             parameters={'text': text}
         )
 
+    def _parse_direct_app_control(self, text: str) -> Optional[CommandResult]:
+        """Parse deterministic app commands for Notepad, Chrome, and VS Code."""
+        app_key = self._match_target_app(text)
+        if not app_key:
+            return None
+
+        app_display = {
+            'notepad': 'Notepad',
+            'chrome': 'Chrome',
+            'vs_code': 'VS Code'
+        }[app_key]
+
+        # Help and teaching commands
+        if any(phrase in text for phrase in [
+            'commands for', 'shortcuts for', 'help with', 'what can you do in', 'teach'
+        ]):
+            return CommandResult(
+                intent=Intent.SYSTEM_CONTROL,
+                confidence=1.0,
+                action='show_app_commands',
+                parameters={'application': app_display, 'text': text}
+            )
+
+        shortcut_catalog = self._get_app_command_catalog()
+        app_commands = shortcut_catalog.get(app_key, {})
+        for command_key, phrases in app_commands.items():
+            if any(phrase in text for phrase in phrases):
+                return CommandResult(
+                    intent=Intent.SYSTEM_CONTROL,
+                    confidence=0.99,
+                    action='app_shortcut',
+                    parameters={
+                        'application': app_display,
+                        'shortcut': command_key,
+                        'text': text
+                    }
+                )
+
+        # Open application commands (kept after shortcut matching so
+        # phrases like "open terminal in vs code" trigger shortcut actions).
+        if any(text.startswith(prefix) for prefix in ['open ', 'launch ', 'start ', 'run ']):
+            return CommandResult(
+                intent=Intent.OPEN_APPLICATION,
+                confidence=0.99,
+                action='open_application',
+                parameters={'application': app_display, 'text': text}
+            )
+
+        # Close application commands
+        if any(word in text for word in ['close ', 'exit ', 'quit ']) and 'tab' not in text:
+            return CommandResult(
+                intent=Intent.SYSTEM_CONTROL,
+                confidence=0.99,
+                action='close_application',
+                parameters={'application': app_display, 'text': text}
+            )
+
+        return None
+
+    def _match_target_app(self, text: str) -> Optional[str]:
+        """Find targeted app from user text for app-specific command handling."""
+        aliases = {
+            'notepad': ['notepad', 'note pad'],
+            'chrome': ['chrome', 'google chrome'],
+            'vs_code': ['vs code', 'vscode', 'visual studio code', 'visual studio']
+        }
+
+        for app_key, names in aliases.items():
+            for name in names:
+                if re.search(rf'\b{re.escape(name)}\b', text):
+                    return app_key
+        return None
+
+    def _get_app_command_catalog(self) -> Dict[str, Dict[str, List[str]]]:
+        """Command phrase catalog for app-specific shortcuts."""
+        return {
+            'chrome': {
+                'new_tab': ['new tab', 'open new tab', 'add tab'],
+                'close_tab': ['close tab', 'remove tab'],
+                'next_tab': ['next tab', 'go next tab'],
+                'previous_tab': ['previous tab', 'prev tab', 'last tab'],
+                'reopen_tab': ['reopen tab', 'restore tab'],
+                'new_window': ['new window'],
+                'incognito': ['incognito', 'private window'],
+                'refresh': ['refresh page', 'refresh chrome', 'reload page'],
+                'hard_refresh': ['hard refresh'],
+                'focus_address_bar': ['address bar', 'url bar', 'search bar'],
+                'downloads': ['open downloads', 'downloads page'],
+                'history': ['open history', 'history page'],
+                'bookmark_page': ['bookmark page', 'save bookmark'],
+                'dev_tools': ['developer tools', 'open dev tools', 'inspect element']
+            },
+            'notepad': {
+                'new_file': ['new file', 'create file'],
+                'open_file': ['open file'],
+                'save_file': ['save file', 'save notepad'],
+                'save_as': ['save as'],
+                'find_text': ['find text', 'find in notepad'],
+                'replace_text': ['replace text', 'replace in notepad'],
+                'select_all': ['select all'],
+                'undo': ['undo'],
+                'redo': ['redo'],
+                'time_date': ['insert time', 'insert date', 'time date']
+            },
+            'vs_code': {
+                'new_file': ['new file'],
+                'open_file': ['open file'],
+                'save_file': ['save file'],
+                'save_all': ['save all'],
+                'close_editor': ['close file', 'close editor'],
+                'next_tab': ['next tab', 'next editor'],
+                'previous_tab': ['previous tab', 'previous editor'],
+                'command_palette': ['command palette'],
+                'quick_open': ['quick open', 'go to file'],
+                'toggle_terminal': ['toggle terminal', 'open terminal', 'show terminal'],
+                'new_terminal': ['new terminal'],
+                'split_editor': ['split editor'],
+                'format_document': ['format document'],
+                'settings': ['open settings', 'settings'],
+                'extensions': ['open extensions', 'extensions panel'],
+                'explorer': ['open explorer', 'explorer panel'],
+                'source_control': ['source control', 'git panel'],
+                'run_and_debug': ['run and debug', 'debug panel']
+            }
+        }
+
     def handle_text(self, text: str):
         """Main text processing handler with comprehensive data collection."""
         self.stats['commands_processed'] += 1
@@ -1451,6 +1583,9 @@ class EnhancedCommandParser:
             
             elif result.intent == Intent.OPEN_APPLICATION:
                 return self._handle_open_application(result)
+
+            elif result.intent == Intent.SYSTEM_CONTROL:
+                return self._handle_system_control(result)
             
             elif result.intent == Intent.CLOSE_WINDOW:
                 return self._handle_close_window(result)
@@ -1697,6 +1832,128 @@ class EnhancedCommandParser:
         self.tts.say(random.choice(responses))
         time.sleep(1)  # Prevent microphone from capturing TTS output
         return True
+
+    def _handle_system_control(self, result: CommandResult) -> bool:
+        """Handle generic and app-specific system control commands."""
+        action = result.action
+        text = result.parameters.get('text', '').lower()
+
+        if action == 'close_application':
+            app_name = result.parameters.get('application', '')
+            success = self.actions.close_application(app_name)
+            if success:
+                self.tts.say(f"Closed {app_name}")
+            else:
+                self.tts.say(f"I could not close {app_name}")
+            time.sleep(1)
+            return success
+
+        if action == 'app_shortcut':
+            app_name = result.parameters.get('application', '')
+            shortcut = result.parameters.get('shortcut', '')
+            success = self.actions.execute_app_shortcut(app_name, shortcut)
+            if success:
+                spoken = shortcut.replace('_', ' ')
+                self.tts.say(f"Done. {spoken} in {app_name}")
+            else:
+                self.tts.say(f"I could not run that {app_name} command")
+            time.sleep(1)
+            return success
+
+        if action == 'show_app_commands':
+            app_name = result.parameters.get('application', '')
+            lines = self._get_app_commands_help_lines(app_name)
+            print("\nAPP COMMANDS")
+            print("=" * 50)
+            for line in lines:
+                print(f"  - {line}")
+            self.tts.say(f"{app_name} commands are ready. I printed the full list in the console.")
+            time.sleep(1)
+            return True
+
+        # Generic window operations
+        if 'minimize' in text or 'hide' in text:
+            self.actions.hotkey('win', 'down')
+            self.tts.say("Window minimized")
+            time.sleep(1)
+            return True
+
+        if 'maximize' in text or 'show' in text:
+            self.actions.hotkey('win', 'up')
+            self.tts.say("Window maximized")
+            time.sleep(1)
+            return True
+
+        if 'next window' in text or 'alt tab' in text:
+            self.actions.hotkey('alt', 'tab')
+            self.tts.say("Switched window")
+            time.sleep(1)
+            return True
+
+        if 'previous window' in text:
+            self.actions.hotkey('alt', 'shift', 'tab')
+            self.tts.say("Switched to previous window")
+            time.sleep(1)
+            return True
+
+        self.tts.say("I need more details to help with that request.")
+        time.sleep(1)
+        return False
+
+    def _get_app_commands_help_lines(self, app_name: str) -> List[str]:
+        """Return human-friendly app command examples for spoken help."""
+        app = (app_name or '').strip().lower()
+
+        if app == 'chrome':
+            return [
+                'open chrome',
+                'close chrome',
+                'new tab in chrome',
+                'close tab in chrome',
+                'next tab in chrome',
+                'previous tab in chrome',
+                'reopen tab in chrome',
+                'open incognito in chrome',
+                'refresh page in chrome',
+                'open history in chrome',
+                'open downloads in chrome',
+                'open developer tools in chrome'
+            ]
+
+        if app == 'notepad':
+            return [
+                'open notepad',
+                'close notepad',
+                'new file in notepad',
+                'open file in notepad',
+                'save file in notepad',
+                'save as in notepad',
+                'find text in notepad',
+                'replace text in notepad',
+                'select all in notepad',
+                'undo in notepad',
+                'redo in notepad',
+                'insert time date in notepad'
+            ]
+
+        # VS Code fallback
+        return [
+            'open vs code',
+            'close vs code',
+            'new file in vs code',
+            'open file in vs code',
+            'save file in vs code',
+            'save all in vs code',
+            'close editor in vs code',
+            'command palette in vs code',
+            'quick open in vs code',
+            'open terminal in vs code',
+            'new terminal in vs code',
+            'split editor in vs code',
+            'format document in vs code',
+            'open settings in vs code',
+            'open extensions in vs code'
+        ]
 
     def _handle_volume_control(self, result: CommandResult) -> bool:
         """Handle volume control commands."""

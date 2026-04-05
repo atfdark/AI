@@ -39,41 +39,68 @@ class AssistantConfigWizard:
             json.dump(config, f, indent=2, ensure_ascii=False)
         print(f"[INFO] Configuration saved to {self.config_path}")
 
+    def _is_internet_available(self) -> bool:
+        """Check whether internet access is currently available."""
+        targets = [
+            "https://www.google.com/generate_204",
+            "https://www.cloudflare.com/cdn-cgi/trace",
+        ]
+        for target in targets:
+            try:
+                with urllib.request.urlopen(target, timeout=3) as response:
+                    if response.status < 500:
+                        return True
+            except Exception:
+                continue
+        return False
+
+    def _find_existing_vosk_model(self) -> str | None:
+        """Find an existing Vosk model path if one exists."""
+        model_paths = [
+            "models/vosk-model-small-en-us-0.15",
+            "vosk-model-small-en-us-0.15",
+            "./vosk-model"
+        ]
+
+        for path in model_paths:
+            if os.path.exists(path) and os.path.isdir(path):
+                if any(f in os.listdir(path) for f in ['final.mdl', 'final.mat', 'final.mdl.orig']):
+                    return path
+        return None
+
     def setup_speech_recognition(self, config):
         """Setup speech recognition configuration."""
         print("\n=== SPEECH RECOGNITION SETUP ===")
-        print("Your assistant supports multiple speech recognition engines:")
-        print("1. Google Web API (online, high accuracy)")
-        print("2. Vosk (offline, privacy-focused)")
-        print("3. Auto (try Google first, fallback to Vosk)")
-        
-        while True:
-            choice = input("\nChoose preferred engine (1-3 or google/vosk/auto): ").strip().lower()
-            
-            engine_mapping = {
-                '1': 'google',
-                'google': 'google',
-                '2': 'vosk', 
-                'vosk': 'vosk',
-                '3': 'auto',
-                'auto': 'auto'
-            }
-            
-            if choice in engine_mapping:
-                engine = engine_mapping[choice]
-                break
-            else:
-                print("Invalid choice. Please enter 1, 2, 3, 'google', 'vosk', or 'auto'.")
+        print("Auto-detecting best speech engine configuration...")
         
         # Initialize speech recognition section
         if 'speech_recognition' not in config:
             config['speech_recognition'] = {}
-        
-        config['speech_recognition']['preferred_engine'] = engine
-        
-        # Setup Vosk if chosen
-        if engine in ['vosk', 'auto']:
-            self.setup_vosk_model(config)
+
+        internet_available = self._is_internet_available()
+        config['speech_recognition']['preferred_engine'] = 'auto'
+        config['speech_recognition']['network_auto_switch'] = True
+
+        # Ensure ML ASR fallback exists for offline operation.
+        ml_asr_cfg = config['speech_recognition'].setdefault('ml_asr', {})
+        ml_asr_cfg.setdefault('enabled', True)
+        ml_asr_cfg.setdefault('model', 'whisper')
+        ml_asr_cfg.setdefault('model_size', 'base')
+        ml_asr_cfg.setdefault('offline', True)
+        ml_asr_cfg.setdefault('device', 'cpu')
+
+        existing_model = self._find_existing_vosk_model()
+        if existing_model:
+            config['speech_recognition']['vosk_model_path'] = existing_model
+            print(f"[INFO] Found local Vosk model: {existing_model}")
+        else:
+            config['speech_recognition']['vosk_model_path'] = None
+            print("[INFO] No local Vosk model found. Offline fallback will use Whisper.")
+
+        if internet_available:
+            print("[INFO] Internet detected: Google will be used first, then local fallbacks.")
+        else:
+            print("[INFO] Internet not detected: local engines will be prioritized automatically.")
         
         return config
 
@@ -91,53 +118,15 @@ class AssistantConfigWizard:
             os.system("pip install vosk")
         
         # Check for existing model
-        model_paths = [
-            "models/vosk-model-small-en-us-0.15",
-            "vosk-model-small-en-us-0.15",
-            "./vosk-model"
-        ]
-        
-        existing_model = None
-        for path in model_paths:
-            if os.path.exists(path) and os.path.isdir(path):
-                # Check if it looks like a Vosk model
-                if any(f in os.listdir(path) for f in ['final.mdl', 'final.mat', 'final.mdl.orig']):
-                    existing_model = path
-                    break
-        
+        existing_model = self._find_existing_vosk_model()
+
         if existing_model:
             print(f"[INFO] Found existing Vosk model: {existing_model}")
-            use_existing = input("Use existing model? (y/n): ").strip().lower()
-            if use_existing == 'y':
-                config['speech_recognition']['vosk_model_path'] = existing_model
-                return
-        
-        # Download new model
-        print("\nAvailable models:")
-        print("1. Small English model (50MB) - Recommended for most users")
-        print("2. Large English model (1.8GB) - Better accuracy")
-        
-        model_choice = input("Choose model (1-2): ").strip()
-        
-        if model_choice == '2':
-            model_url = "http://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip"
-            model_name = "vosk-model-en-us-0.22"
-            expected_size = "1.8GB"
-        else:
-            model_url = "http://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
-            model_name = "vosk-model-small-en-us-0.15"
-            expected_size = "50MB"
-        
-        print(f"\nThis will download approximately {expected_size}.")
-        confirm = input("Continue? (y/n): ").strip().lower()
-        
-        if confirm != 'y':
-            print("Skipping Vosk model download.")
+            config['speech_recognition']['vosk_model_path'] = existing_model
             return
-        
-        # Download and extract model
-        self.download_vosk_model(model_url, model_name)
-        config['speech_recognition']['vosk_model_path'] = model_name
+
+        print("[INFO] No Vosk model found. Skipping automatic download.")
+        print("[INFO] You can add a model later and set speech_recognition.vosk_model_path in config.json.")
 
     def download_vosk_model(self, url, model_name):
         """Download and extract Vosk model."""
@@ -214,9 +203,10 @@ class AssistantConfigWizard:
                     config['speech_recognition']['energy_threshold'] = threshold
             except ValueError:
                 print("Invalid threshold, using default")
-        
-        dynamic_energy = input("Enable dynamic energy adjustment? (y/n, default y): ").strip().lower()
-        config['speech_recognition']['dynamic_energy_threshold'] = dynamic_energy != 'n'
+
+        # Default enabled for better adaptation without prompting yes/no.
+        config['speech_recognition']['dynamic_energy_threshold'] = True
+        print("[INFO] Dynamic energy adjustment: enabled")
         
         return config
 
@@ -227,19 +217,11 @@ class AssistantConfigWizard:
         if 'safety' not in config:
             config['safety'] = {}
         
-        print("Configure safety confirmations for potentially dangerous operations:")
-        
-        # File operations
-        confirm_delete = input("Confirm before deleting files? (y/n, default y): ").strip().lower()
-        config['safety']['confirm_delete'] = confirm_delete != 'n'
-        
-        # System operations
-        confirm_shutdown = input("Confirm before system shutdown? (y/n, default y): ").strip().lower()
-        config['safety']['confirm_shutdown'] = confirm_shutdown != 'n'
-        
-        # Internet operations
-        confirm_website = input("Confirm before opening websites? (y/n, default n): ").strip().lower()
-        config['safety']['confirm_website'] = confirm_website == 'y'
+        print("Applying non-interactive defaults (no yes/no prompts)...")
+        config['safety']['confirm_delete'] = False
+        config['safety']['confirm_shutdown'] = False
+        config['safety']['confirm_website'] = False
+        print("[INFO] Safety confirmations disabled by default")
         
         return config
 
@@ -289,8 +271,6 @@ class AssistantConfigWizard:
         print("This wizard will help you configure your voice assistant.")
         print("Your existing configuration will be backed up.")
         
-        input("\nPress Enter to continue...")
-        
         # Load existing config
         config = self.load_config()
         
@@ -311,7 +291,7 @@ class AssistantConfigWizard:
         
         print("\n=== CONFIGURATION COMPLETE ===")
         print("Your voice assistant is now configured!")
-        print("Run 'python CODE.PY' to start your assistant.")
+        print("Run 'python enhanced_launcher.py' to start your assistant.")
         
         if config.get('speech_recognition', {}).get('preferred_engine') == 'vosk':
             print("\nNOTE: Vosk offline recognition requires the model to be downloaded.")

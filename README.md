@@ -88,6 +88,23 @@ python CODE.PY
 python enhanced_launcher.py --test
 ```
 
+**Knowledge Corpus Catalog (Offline Brain Datasets)**
+```bash
+python enhanced_launcher.py --knowledge-catalog --knowledge-bundle starter
+```
+
+**Generate Knowledge Acquisition Plan**
+```bash
+python enhanced_launcher.py --knowledge-plan --knowledge-bundle starter
+```
+
+**Register and Ingest Downloaded Datasets**
+```bash
+python knowledge_corpus_bootstrap.py register --dataset wikipedia --path D:/datasets/wikipedia_clean
+python knowledge_corpus_bootstrap.py register --dataset openstax --path D:/datasets/openstax
+python knowledge_corpus_bootstrap.py ingest-registered --max-files-per-dataset 5000
+```
+
 **Show Implementation Status**
 ```bash
 python enhanced_launcher.py --status
@@ -108,7 +125,48 @@ python enhanced_launcher.py --demo
 - `"open Chrome"` - Launch Chrome browser
 - `"launch VS Code"` - Start Visual Studio Code
 - `"open Notepad"` - Launch Notepad
+- `"close Chrome"` / `"close Notepad"` / `"close VS Code"` - Close the target app
 - *(Add any application to config.json)*
+
+### ⌨️ **App-Specific Shortcuts**
+Examples supported by voice:
+
+Chrome:
+- `"new tab in chrome"`
+- `"close tab in chrome"`
+- `"next tab in chrome"`
+- `"previous tab in chrome"`
+- `"open incognito in chrome"`
+- `"refresh page in chrome"`
+- `"open downloads in chrome"`
+- `"open history in chrome"`
+- `"open developer tools in chrome"`
+
+Notepad:
+- `"new file in notepad"`
+- `"open file in notepad"`
+- `"save file in notepad"`
+- `"save as in notepad"`
+- `"find text in notepad"`
+- `"replace text in notepad"`
+- `"insert time date in notepad"`
+
+VS Code:
+- `"new file in vs code"`
+- `"open file in vs code"`
+- `"save file in vs code"`
+- `"save all in vs code"`
+- `"close editor in vs code"`
+- `"command palette in vs code"`
+- `"quick open in vs code"`
+- `"open terminal in vs code"`
+- `"split editor in vs code"`
+- `"format document in vs code"`
+- `"open settings in vs code"`
+- `"open extensions in vs code"`
+
+Tip:
+- Ask `"commands for chrome"`, `"commands for notepad"`, or `"commands for vs code"` and the assistant prints full examples in the console.
 
 ### 🖥️ **System Operations**
 - `"take a screenshot"` - Capture screen

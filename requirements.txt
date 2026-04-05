@@ -1,8 +1,10 @@
 SpeechRecognition
-pygame
 pyautogui
 keyboard
-pyaudio
+# Prefer Windows-friendly PyAudio-compatible wheel.
+pyaudiowpatch
+# Optional native build alternative (may fail on Python 3.14 without build tools):
+# pyaudio
 vosk
 numpy
 newsapi-python
@@ -29,3 +31,6 @@ ollama
 pydantic
 sentence-transformers
 faiss-cpu
+pymupdf
+pytesseract
+pillow

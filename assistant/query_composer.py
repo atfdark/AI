@@ -18,7 +18,7 @@ def compose_router_prompt(
     context = context or {}
 
     instruction = {
-        "task": "Choose how to handle the command using available tools.",
+        "task": "Choose how to handle the command using available tools and available memory context.",
         "allowed_routes": ["direct", "plan", "clarify", "fallback"],
         "output_schema": {
             "route": "direct|plan|clarify|fallback",
@@ -36,6 +36,16 @@ def compose_router_prompt(
         "rules": [
             "Prefer direct route when one tool is enough.",
             "Use plan route for multi-step requests.",
+            "For question-answering that does not require desktop actions, use answer_offline.",
+            "For expanding offline knowledge from local files/folders, use ingest_knowledge.",
+            "For checking offline knowledge coverage, use knowledge_stats.",
+            "For dataset recommendations and bundles, use knowledge_catalog.",
+            "For creating a dataset acquisition plan, use knowledge_plan.",
+            "For connecting downloaded corpora to local paths, use register_knowledge_source.",
+            "For bulk indexing all registered corpora, use ingest_registered_knowledge.",
+            "For finding local projects/folders/datasets, use search_files first and then open_path if needed.",
+            "For long-term user preferences, use remember_fact or recall_memory.",
+            "For plan steps, you may reference previous step output fields using $stepN.field (example: $step1.first_path).",
             "Use clarify route when request is ambiguous.",
             "Never invent tools that are not in the tools list.",
             "Return valid JSON only.",

@@ -6,6 +6,10 @@ import sys
 import argparse
 import importlib.util
 import json
+import platform
+import shutil
+import time
+import traceback
 from pathlib import Path
 
 
@@ -23,6 +27,11 @@ EXAMPLES:
   python enhanced_launcher.py --demo             # Interactive demo
   python enhanced_launcher.py --status           # Show implementation status
   python enhanced_launcher.py --agent-test       # Run agent-layer diagnostics
+    python enhanced_launcher.py --knowledge-catalog --knowledge-bundle starter
+    python enhanced_launcher.py --knowledge-plan --knowledge-bundle starter
+    python enhanced_launcher.py --doctor           # Full environment diagnostics
+    python enhanced_launcher.py --doctor --fix     # Apply safe auto-fixes
+    python enhanced_launcher.py --debug            # Show traceback on failures
         """
     )
     
@@ -61,6 +70,42 @@ EXAMPLES:
         action='store_true',
         help='Run Jarvis agent-layer diagnostics and exit'
     )
+
+    parser.add_argument(
+        '--knowledge-catalog',
+        action='store_true',
+        help='Show curated dataset catalog for offline knowledge corpus'
+    )
+
+    parser.add_argument(
+        '--knowledge-plan',
+        action='store_true',
+        help='Generate dataset acquisition plan JSON for selected bundle'
+    )
+
+    parser.add_argument(
+        '--knowledge-bundle',
+        default='starter',
+        help='Dataset bundle for --knowledge-catalog/--knowledge-plan (starter, core_plus, medical_plus, research_plus, full)'
+    )
+
+    parser.add_argument(
+        '--doctor',
+        action='store_true',
+        help='Run full environment and dependency diagnostics, then exit'
+    )
+
+    parser.add_argument(
+        '--fix',
+        action='store_true',
+        help='Apply safe launcher fixes (for example restore missing config from backup)'
+    )
+
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Print full traceback when startup fails'
+    )
     
     parser.add_argument(
         '--version', '-v',
@@ -75,9 +120,20 @@ EXAMPLES:
     )
     
     args = parser.parse_args()
+
+    start_time = time.time()
     
     print("VOICE ASSISTANT LAUNCHER")
     print("=" * 50)
+
+    if args.doctor:
+        print("Running environment doctor...")
+        healthy = run_environment_doctor(config_path=args.config, apply_fixes=args.fix)
+        if healthy:
+            print("\n[OK] Doctor completed with no blocking issues.")
+        else:
+            print("\n[WARNING] Doctor found issues. Review guidance above.")
+        return
     
     # Configuration wizard mode
     if args.config_wizard:
@@ -110,16 +166,33 @@ EXAMPLES:
         print("Running agent-layer diagnostics...")
         run_agent_diagnostics(config_path=args.config)
         return
+
+    if args.knowledge_catalog:
+        print("Loading knowledge dataset catalog...")
+        show_knowledge_catalog(bundle=args.knowledge_bundle, config_path=args.config)
+        return
+
+    if args.knowledge_plan:
+        print("Generating knowledge dataset plan...")
+        generate_knowledge_plan(bundle=args.knowledge_bundle, config_path=args.config)
+        return
+
+    # Startup preflight for launch modes.
+    preflight_ok = run_startup_preflight(config_path=args.config, apply_fixes=args.fix)
+    if not preflight_ok:
+        print("\n[ERROR] Startup preflight failed. Run: python enhanced_launcher.py --doctor --fix")
+        return
     
     # Classic mode (original)
     if args.classic:
         print("Launching Classic Mode...")
         try:
-            from assistant import run
-            run()
+            _launch_classic_mode()
         except ImportError as e:
             print(f"Error importing classic mode: {e}")
             print("Make sure you're in the correct directory.")
+            if args.debug:
+                traceback.print_exc()
         return
     
     # Enhanced mode (default)
@@ -127,28 +200,200 @@ EXAMPLES:
     try:
         # Check if enhanced components are available
         try:
-            from assistant.main_enhanced import VoiceAssistant
-            print("Enhanced components loaded successfully")
-            
-            assistant = VoiceAssistant(config_path=args.config)
-            assistant.start()
+            _launch_enhanced_mode(config_path=args.config)
             
         except ImportError as e:
             print(f"Enhanced mode unavailable: {e}")
             print("Falling back to classic mode...")
-            
-            from assistant import run
-            run()
+            _launch_classic_mode()
             
     except KeyboardInterrupt:
         print("\nAssistant stopped by user")
     except Exception as e:
         print(f"Error starting assistant: {e}")
-        print("\nTroubleshooting:")
-        print("1. Check your microphone permissions")
-        print("2. Ensure all dependencies are installed: pip install -r requirements.txt")
-        print("3. Run configuration wizard: python enhanced_launcher.py --config-wizard")
-        print("4. Try classic mode: python enhanced_launcher.py --classic")
+        if args.debug:
+            traceback.print_exc()
+        _print_troubleshooting_tips()
+    finally:
+        elapsed = time.time() - start_time
+        print(f"\nLauncher session finished in {elapsed:.2f}s")
+
+
+def _resolve_config_path(config_path: str) -> Path:
+    """Resolve config path from cwd if relative."""
+    resolved_path = Path(config_path)
+    if not resolved_path.is_absolute():
+        resolved_path = Path.cwd() / resolved_path
+    return resolved_path
+
+
+def _restore_config_from_backup(config_path: str) -> bool:
+    """Restore config from backup when possible."""
+    target = _resolve_config_path(config_path)
+    backup = target.with_suffix(target.suffix + '.backup')
+
+    if not backup.exists():
+        # Fallback to workspace-level default backup.
+        workspace_backup = Path(__file__).resolve().parent / 'config.json.backup'
+        if workspace_backup.exists():
+            backup = workspace_backup
+        else:
+            return False
+
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(backup, target)
+        print(f"  [FIXED] Restored missing config from backup: {backup}")
+        return True
+    except Exception as exc:
+        print(f"  [WARNING] Failed to restore config backup: {exc}")
+        return False
+
+
+def _ensure_runtime_directories() -> list[str]:
+    """Ensure frequently-used runtime directories exist."""
+    root = Path(__file__).resolve().parent
+    required_dirs = [
+        root / 'logs',
+        root / 'analytics',
+        root / 'data_versions',
+        root / 'knowledge_sources',
+        root / 'models',
+    ]
+
+    created = []
+    for path in required_dirs:
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+            created.append(str(path))
+    return created
+
+
+def _launch_enhanced_mode(config_path: str):
+    """Start enhanced assistant mode."""
+    from assistant.main_enhanced import VoiceAssistant
+
+    print("Enhanced components loaded successfully")
+    assistant = VoiceAssistant(config_path=config_path)
+    assistant.start()
+
+
+def _launch_classic_mode():
+    """Start classic assistant mode."""
+    from assistant import run
+
+    run()
+
+
+def _print_troubleshooting_tips():
+    """Print actionable troubleshooting guidance."""
+    print("\nTroubleshooting:")
+    print("1. Check microphone and privacy permissions in Windows settings")
+    print("2. Ensure dependencies are installed: pip install -r requirements.txt")
+    print("3. Run diagnostics: python enhanced_launcher.py --doctor --fix")
+    print("4. Re-run setup wizard: python enhanced_launcher.py --config-wizard")
+    print("5. Launch fallback mode: python enhanced_launcher.py --classic")
+
+
+def run_startup_preflight(config_path: str = 'config.json', apply_fixes: bool = False) -> bool:
+    """Run lightweight checks before launching voice loop."""
+    print("\nSTARTUP PREFLIGHT")
+    print("-" * 50)
+
+    created_dirs = _ensure_runtime_directories()
+    if created_dirs:
+        print(f"  [OK] Created runtime directories: {len(created_dirs)}")
+
+    root_dir = Path(__file__).resolve().parent
+    assistant_dir = root_dir / 'assistant'
+    if not assistant_dir.exists():
+        print(f"  [FAIL] Missing assistant package directory: {assistant_dir}")
+        return False
+    print(f"  [OK] Assistant package found: {assistant_dir}")
+
+    resolved_config = _resolve_config_path(config_path)
+    if not resolved_config.exists():
+        print(f"  [WARNING] Config not found: {resolved_config}")
+        if apply_fixes and _restore_config_from_backup(config_path):
+            pass
+        else:
+            print("  [FAIL] Cannot continue without a valid config file")
+            return False
+
+    config_data, config_error = _safe_load_config(config_path)
+    if config_error:
+        print(f"  [FAIL] Failed to load config: {config_error}")
+        return False
+
+    required_sections = ['apps', 'wake_word', 'speech_recognition']
+    missing_sections = [section for section in required_sections if section not in config_data]
+    if missing_sections:
+        print(f"  [WARNING] Config missing sections: {', '.join(missing_sections)}")
+    else:
+        print("  [OK] Core config sections are present")
+
+    critical_dependencies = {
+        'SpeechRecognition': 'speech_recognition',
+        'PyAutoGUI': 'pyautogui',
+        'Keyboard': 'keyboard',
+        'TTS (pyttsx3)': 'pyttsx3',
+        'Audio backend': ['pyaudiowpatch', 'pyaudio'],
+    }
+
+    missing_critical = [
+        name
+        for name, module_name in critical_dependencies.items()
+        if not _is_module_available(module_name)
+    ]
+
+    if missing_critical:
+        print(f"  [WARNING] Missing core dependencies: {', '.join(missing_critical)}")
+        print("  [INFO] Install/fix with: pip install -r requirements.txt")
+    else:
+        print("  [OK] Core dependencies detected")
+
+    return True
+
+
+def run_environment_doctor(config_path: str = 'config.json', apply_fixes: bool = False) -> bool:
+    """Run deeper diagnostics and print actionable status."""
+    print("\nENVIRONMENT DOCTOR")
+    print("=" * 50)
+    print(f"  [INFO] Platform: {platform.platform()}")
+    print(f"  [INFO] Python: {sys.version.split()[0]}")
+    print(f"  [INFO] Executable: {sys.executable}")
+    print(f"  [INFO] Working directory: {Path.cwd()}")
+
+    preflight_ok = run_startup_preflight(config_path=config_path, apply_fixes=apply_fixes)
+
+    import_checks = {
+        'assistant.main_enhanced': 'assistant.main_enhanced',
+        'assistant.speech_enhanced': 'assistant.speech_enhanced',
+        'assistant.parser_enhanced': 'assistant.parser_enhanced',
+        'assistant.actions': 'assistant.actions',
+    }
+
+    print("\nImport readiness:")
+    import_failures = 0
+    for label, module_name in import_checks.items():
+        available = _is_module_available(module_name)
+        marker = '[OK]' if available else '[MISSING]'
+        print(f"  {marker} {label}")
+        if not available:
+            import_failures += 1
+
+    show_implementation_status(config_path=config_path)
+
+    if import_failures:
+        print("\n[WARNING] Some assistant modules are missing or not importable.")
+
+    if not preflight_ok:
+        print("\n[INFO] Suggested next steps:")
+        print("  - python enhanced_launcher.py --doctor --fix")
+        print("  - python enhanced_launcher.py --config-wizard")
+        return False
+
+    return import_failures == 0
 
 
 def _is_module_available(module_name: str | list[str] | tuple[str, ...]) -> bool:
@@ -316,6 +561,15 @@ def run_agent_diagnostics(config_path: str = 'config.json'):
         print(f"  [OK] Registered tools: {health.get('tool_count')}")
         print(f"  [OK] Ollama enabled: {health.get('ollama_enabled')}")
         print(f"  [OK] Ollama model: {health.get('ollama_model')}")
+        knowledge = health.get('knowledge', {})
+        if knowledge:
+            print(f"  [OK] Knowledge sources: {knowledge.get('sources')}")
+            print(f"  [OK] Knowledge chunks: {knowledge.get('chunks')}")
+            print(f"  [OK] Knowledge avg trust: {knowledge.get('avg_trust')}")
+        registry = health.get('knowledge_registry', {})
+        if registry:
+            print(f"  [OK] Registered corpora: {registry.get('registered_sources')}")
+            print(f"  [OK] Accessible corpora: {registry.get('accessible_sources')}")
 
         # Quick dry-run against a synthetic unknown command
         class DummyResult:
@@ -336,6 +590,54 @@ def run_agent_diagnostics(config_path: str = 'config.json'):
         print(f"  [OK] Dry run response: {dry_run.get('response', '')}")
     except Exception as exc:
         print(f"  [FAIL] Agent diagnostics failed: {exc}")
+
+
+def _resolve_workspace_root() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _load_corpus_manager(config_path: str = 'config.json'):
+    from assistant.knowledge_bootstrap import KnowledgeBootstrapManager
+
+    root_dir = _resolve_workspace_root()
+    config_data, _error = _safe_load_config(config_path)
+    corpus_cfg = config_data.get('knowledge_corpus', {}) if isinstance(config_data, dict) else {}
+    registry_path = corpus_cfg.get('registry_path', 'knowledge_sources/dataset_registry.json')
+    if not os.path.isabs(registry_path):
+        registry_path = str(root_dir / registry_path)
+
+    return KnowledgeBootstrapManager(workspace_root=str(root_dir), registry_path=registry_path)
+
+
+def show_knowledge_catalog(bundle: str = 'starter', config_path: str = 'config.json'):
+    print("\nKNOWLEDGE DATASET CATALOG")
+    print("=" * 50)
+
+    manager = _load_corpus_manager(config_path=config_path)
+    catalog = manager.catalog(bundle=bundle)
+    if not catalog:
+        print(f"  [WARNING] No datasets found for bundle: {bundle}")
+        return
+
+    print(f"Bundle: {bundle}")
+    print(f"Datasets: {len(catalog)}")
+    for item in catalog:
+        size_min = item.get('size_gb_min', 0)
+        size_max = item.get('size_gb_max', 0)
+        print(f"  - {item.get('dataset_id')}: {item.get('name')} ({size_min}-{size_max} GB)")
+
+
+def generate_knowledge_plan(bundle: str = 'starter', config_path: str = 'config.json'):
+    print("\nKNOWLEDGE PLAN GENERATION")
+    print("=" * 50)
+
+    manager = _load_corpus_manager(config_path=config_path)
+    plan = manager.create_plan(bundle=bundle)
+    size = plan.get('estimated_size_gb', {})
+    print(f"  [OK] Bundle: {plan.get('bundle')}")
+    print(f"  [OK] Datasets: {plan.get('dataset_count')}")
+    print(f"  [OK] Estimated size: {size.get('min_gb', 0)}-{size.get('max_gb', 0)} GB")
+    print(f"  [OK] Plan file: {plan.get('plan_path')}")
 
 
 def run_comprehensive_tests():
