@@ -19,3 +19,4 @@
 {"timestamp": "2026-04-05T10:44:35.961306", "level": "WARNING", "logger": "assistant.performance_monitor", "message": "Performance alert: High CPU usage: 99.9%", "module": "performance_monitor", "function": "_check_thresholds", "line": 198}
 {"timestamp": "2026-04-05T11:15:03.933567", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}
 {"timestamp": "2026-04-05T11:15:04.945356", "level": "WARNING", "logger": "assistant.performance_monitor", "message": "Performance alert: High CPU usage: 93.5%", "module": "performance_monitor", "function": "_check_thresholds", "line": 198}
+{"timestamp": "2026-04-05T12:02:52.704446", "level": "INFO", "logger": "assistant.performance_monitor", "message": "Performance monitoring started", "module": "performance_monitor", "function": "start_monitoring", "line": 126}

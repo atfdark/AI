@@ -10,6 +10,7 @@ import signal
 import argparse
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 # Import enhanced components
 from .tts import TTS
@@ -20,6 +21,8 @@ from .dialogue_state_tracker import DialogueStateTracker
 from .feedback_system import get_feedback_collector, get_online_learner, get_preference_adapter, FeedbackType, Rating, FeedbackEntry
 from .performance_monitor import get_performance_monitor, record_command_performance
 from .agent_runtime import AgentRuntime
+from .wake_word_engine import WakeWordEngine
+from .hud import HUD, HUDEvent
 
 
 class VoiceAssistant:
@@ -60,8 +63,16 @@ class VoiceAssistant:
         )
         wake_cfg = self.config.get('wake_word', {})
         self.wake_word_enabled = bool(wake_cfg.get('enabled', False))
-        # Default behavior is command-first for better UX: wake word is optional unless explicitly required.
         self.require_wake_word_for_commands = bool(wake_cfg.get('require_for_commands', False))
+
+        # Dedicated wake-word engine (OpenWakeWord/Porcupine/soft fallback).
+        self.wake_engine: Optional[WakeWordEngine] = None
+        if self.wake_word_enabled:
+            self.wake_engine = WakeWordEngine(
+                on_wake=self._handle_wake_word,
+                config_path=self.config_path,
+            )
+
         self.recognizer = EnhancedSpeechRecognizer(
             callback=self._handle_command_text,
             wake_word_callback=self._handle_wake_word,
@@ -77,6 +88,8 @@ class VoiceAssistant:
         self.activation_timeout = self.config.get('wake_word', {}).get('timeout', 30)
         self.last_activation = None
         self.start_time = None
+        # HUD overlay
+        self.hud = HUD()
         self.session_stats = {
             'commands_executed': 0,
             'session_duration': 0,
@@ -129,6 +142,7 @@ class VoiceAssistant:
     def _handle_wake_word(self):
         """Handle wake word detection."""
         self.is_active = True
+        self.hud.on_wake_word()
         self.last_activation = datetime.now()
         print("Assistant activated! Listening for commands...")
         # JARVIS-like responses
@@ -158,8 +172,13 @@ class VoiceAssistant:
         # Reset activation timer on each command to keep conversation going
         self.last_activation = datetime.now()
 
+        # HUD events
+        self.hud.on_transcript(text)
+        self.hud.on_thinking()
+
         # Process the command
         self.parser.handle_text(text)
+        self.hud.on_listening()
 
     def start(self):
         """Start the voice assistant."""
@@ -182,6 +201,8 @@ class VoiceAssistant:
     def _initialize_components(self):
         """Initialize all assistant components."""
         print("[INFO] Initializing components...")
+        self.hud.start()
+        print("[OK] HUD overlay: Starting")
         
         # Test TTS
         try:
@@ -260,6 +281,19 @@ class VoiceAssistant:
             if success:
                 self.is_listening = True
                 self.is_running = True
+                self.hud.on_listening()
+
+                # Start dedicated wake-word engine (non-blocking)
+                if self.wake_engine:
+                    hardware_started = self.wake_engine.start()
+                    if not hardware_started:
+                        # Soft-fallback: hook into speech recognizer transcript.
+                        self.recognizer.wake_word_soft_checker = self.wake_engine.check_transcript
+                    else:
+                        # Hardware engine running — disable duplicate keyword scan
+                        # in EnhancedSpeechRecognizer so we do not double-trigger.
+                        self.recognizer.wake_word_enabled = False
+
                 self.start_time = datetime.now()
                 print(f"\nLISTENING... Speak your commands!")
                 print("=" * 60)
@@ -531,8 +565,13 @@ class VoiceAssistant:
         print(f"\n{'='*60}")
         print("SHUTTING DOWN VOICE ASSISTANT")
         print(f"{'='*60}")
+
+        if self.wake_engine:
+            self.wake_engine.stop()
+            self.wake_engine = None
         
         self.is_running = False
+        self.hud.stop()
         
         # Stop speech recognition
         if self.recognizer:

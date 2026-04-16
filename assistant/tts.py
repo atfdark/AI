@@ -240,14 +240,25 @@ class TTS:
                 pass
 
     async def _edge_synthesize_to_file(self, text: str, output_file: str):
-        communicator = edge_tts.Communicate(
-            text=text,
-            voice=self.edge_voice,
-            rate=self.edge_rate,
-            pitch=self.edge_pitch,
-            volume=self.edge_volume,
-            output_format=self.edge_output_format,
-        )
+        # Backward compatibility: some edge-tts versions do not support
+        # output_format in Communicate.__init__.
+        try:
+            communicator = edge_tts.Communicate(
+                text=text,
+                voice=self.edge_voice,
+                rate=self.edge_rate,
+                pitch=self.edge_pitch,
+                volume=self.edge_volume,
+                output_format=self.edge_output_format,
+            )
+        except TypeError:
+            communicator = edge_tts.Communicate(
+                text=text,
+                voice=self.edge_voice,
+                rate=self.edge_rate,
+                pitch=self.edge_pitch,
+                volume=self.edge_volume,
+            )
         await communicator.save(output_file)
 
     def generate_audio_file(self, text, output_file):

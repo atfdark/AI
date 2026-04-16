@@ -9,8 +9,22 @@
   "wake_word": {
     "enabled": true,
     "word": "jarvis",
-    "timeout": 300,
-    "require_for_commands": false
+    "timeout": 30,
+    "require_for_commands": false,
+    "detection_cooldown": 2.0,
+    "openwakeword": {
+      "model_path": null,
+      "threshold": 0.5
+    },
+    "porcupine": {
+      "access_key": "",
+      "keyword_path": null
+    }
+  },
+  "file_ops": {
+    "read_word_limit": 300,
+    "summary_word_limit": 80,
+    "extra_search_paths": []
   },
   "language": {
     "default": "en",

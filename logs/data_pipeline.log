@@ -60,3 +60,5 @@
 {"timestamp": "2026-04-05T10:46:06.727515", "level": "INFO", "logger": "assistant.data_pipeline", "message": "Stopping data collection pipeline", "module": "data_collection_pipeline", "function": "stop_pipeline", "line": 1016}
 {"timestamp": "2026-04-05T11:15:04.020961", "level": "INFO", "logger": "assistant.data_pipeline", "message": "Starting data collection pipeline", "module": "data_collection_pipeline", "function": "start_pipeline", "line": 975}
 {"timestamp": "2026-04-05T11:17:15.220570", "level": "INFO", "logger": "assistant.data_pipeline", "message": "Stopping data collection pipeline", "module": "data_collection_pipeline", "function": "stop_pipeline", "line": 1016}
+{"timestamp": "2026-04-05T12:02:52.737403", "level": "INFO", "logger": "assistant.data_pipeline", "message": "Starting data collection pipeline", "module": "data_collection_pipeline", "function": "start_pipeline", "line": 975}
+{"timestamp": "2026-04-05T12:02:52.744522", "level": "INFO", "logger": "assistant.data_pipeline", "message": "Stopping data collection pipeline", "module": "data_collection_pipeline", "function": "stop_pipeline", "line": 1016}

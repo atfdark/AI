@@ -1,0 +1,31 @@
+// ============================================================
+// ADD to config.json  (top-level, alongside "wake_word" etc.)
+// ============================================================
+
+  "file_ops": {
+    "read_word_limit": 300,
+    "summary_word_limit": 80,
+    "extra_search_paths": []
+  }
+
+// ============================================================
+// extra_search_paths example — add any folders you want searched:
+//   "extra_search_paths": ["D:\\Work", "C:\\Users\\you\\OneDrive\\Documents"]
+// ============================================================
+
+
+// ============================================================
+// ADD to requirements.txt
+// ============================================================
+
+# File reading — install what you need, rest is optional
+PyMuPDF>=1.23.0          # PDF reading (best quality)
+python-docx>=1.1.0       # .docx Word files
+openpyxl>=3.1.0          # .xlsx Excel files
+# pdfminer.six>=20221105  # PDF fallback if PyMuPDF install fails
+
+
+// ============================================================
+// QUICK INSTALL (one command):
+//   pip install PyMuPDF python-docx openpyxl
+// ============================================================

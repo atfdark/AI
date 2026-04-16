@@ -176,3 +176,4 @@
 {"timestamp": "2026-04-05T11:17:35.756551", "level": "INFO", "logger": "assistant.tts", "message": "TTS playback completed for text: 'JARVIS systems offline. Goodbye.'", "module": "tts", "function": "_speak_text", "line": 165}
 {"timestamp": "2026-04-05T11:17:35.758538", "level": "INFO", "logger": "assistant.tts", "message": "TTS playback started for text: 'JARVIS systems offline. Goodbye.'", "module": "tts", "function": "_speak_text", "line": 154}
 {"timestamp": "2026-04-05T11:17:36.205401", "level": "INFO", "logger": "assistant.tts", "message": "TTS playback completed for text: 'JARVIS systems offline. Goodbye.'", "module": "tts", "function": "_speak_text", "line": 165}
+{"timestamp": "2026-04-05T12:03:12.775364", "level": "INFO", "logger": "assistant.tts", "message": "TTS playback started for text: 'JARVIS systems offline. Goodbye.'", "module": "tts", "function": "_speak_text", "line": 206}

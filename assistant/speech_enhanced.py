@@ -87,6 +87,7 @@ class EnhancedSpeechRecognizer:
         # Wake word settings
         self.wake_word_enabled = self.config.get('wake_word', {}).get('enabled', False)
         self.wake_word = self.config.get('wake_word', {}).get('word', 'jarvis').lower()
+        self.wake_word_soft_checker = None
 
         # Microphone device settings
         self.preferred_microphone = self.config.get('speech_recognition', {}).get('preferred_microphone')
@@ -651,6 +652,12 @@ class EnhancedSpeechRecognizer:
                         self.wake_word_callback()
                     wake_word_detected = True
                     logger.info(f"Wake word '{self.wake_word}' detected")
+
+                # Soft-fallback hook for dedicated WakeWordEngine.
+                soft_checker = getattr(self, 'wake_word_soft_checker', None)
+                if soft_checker and not wake_word_detected:
+                    if soft_checker(corrected_text):
+                        wake_word_detected = True
 
                 # Process as command (remove wake word if present)
                 if self.callback:

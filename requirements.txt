@@ -6,6 +6,9 @@ pyaudiowpatch
 # Optional native build alternative (may fail on Python 3.14 without build tools):
 # pyaudio
 vosk
+openwakeword>=0.6.0
+# Optional Porcupine backend (requires free access key):
+# pvporcupine>=3.0.0
 numpy
 newsapi-python
 gtts
@@ -21,6 +24,7 @@ pypiwin32
 comtypes
 pyttsx3
 edge-tts
+PyQt6
 spacy
 nltk
 scikit-learn
@@ -33,5 +37,7 @@ pydantic
 sentence-transformers
 faiss-cpu
 pymupdf
+python-docx
+openpyxl
 pytesseract
 pillow
